@@ -4,7 +4,12 @@
 import { TextareaAutosize, TextField } from "@mui/material";
 import { X } from "lucide-react";
 import Image from "next/image";
-import React, { startTransition, useEffect, useState } from "react";
+import React, {
+  startTransition,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import * as XLSX from "xlsx";
 import {
   showErrorToast,
@@ -18,6 +23,7 @@ interface InputGroup {
   id: string;
   soal: string;
   gambar?: string | null;
+  imageFile?: File | null;
   pilihan: PilihanJawaban[];
   tingkat: string;
   pelajaran: string;
@@ -28,6 +34,48 @@ interface PilihanJawaban {
   text: string;
   benar: boolean;
 }
+
+const useResetForm = (
+  success: boolean,
+  setSelectedTingkat: (value: string) => void,
+  setSelectedPelajaran: (value: string) => void,
+  setSelectedFile: (value: File | null) => void,
+  setInputGroups: (value: InputGroup[]) => void
+) => {
+  const resetForm = useCallback(() => {
+    setSelectedTingkat("");
+    setSelectedPelajaran("");
+    setSelectedFile(null);
+    setInputGroups([
+      {
+        id: "1",
+        soal: "",
+        gambar: null,
+        imageFile: null,
+        tingkat: "",
+        pelajaran: "",
+        pilihan: Array.from({ length: 5 }, (_, i) => ({
+          id: String.fromCharCode(65 + i),
+          text: "",
+          benar: false,
+        })),
+      },
+    ]);
+  }, [
+    setSelectedTingkat,
+    setSelectedPelajaran,
+    setSelectedFile,
+    setInputGroups,
+  ]);
+
+  useEffect(() => {
+    if (success) {
+      setTimeout(() => {
+        resetForm();
+      }, 0);
+    }
+  }, [success, resetForm]);
+};
 
 const FormTambahSoal = () => {
   const [state, formAction] = useActionState(AddSoal, null);
@@ -40,6 +88,7 @@ const FormTambahSoal = () => {
       id: "1",
       soal: "",
       gambar: null,
+      imageFile: null,
       tingkat: "",
       pelajaran: "",
       pilihan: Array.from({ length: 5 }, (_, i) => ({
@@ -49,6 +98,13 @@ const FormTambahSoal = () => {
       })),
     },
   ]);
+  const resetForm = useResetForm(
+    state?.success ?? false,
+    setSelectedTingkat,
+    setSelectedPelajaran,
+    setSelectedFile,
+    setInputGroups
+  );
 
   useEffect(() => {
     if (state?.success == true) {
@@ -61,6 +117,7 @@ const FormTambahSoal = () => {
           id: "1",
           soal: "",
           gambar: null,
+          imageFile: null,
           tingkat: "",
           pelajaran: "",
           pilihan: Array.from({ length: 5 }, (_, i) => ({
@@ -76,7 +133,7 @@ const FormTambahSoal = () => {
   // Update useEffect untuk handling error
   useEffect(() => {
     if (state?.success) {
-      showSuccessToast(state.message);
+      showSuccessToast(state.data.message || "");
     } else if (state?.error) {
       // Error tingkat
       if (
@@ -98,6 +155,8 @@ const FormTambahSoal = () => {
       // Error soal
       else if (state.error && "soalData" in state.error) {
         showErrorToast("Ada beberapa soal yang belum diisi dengan lengkap");
+      } else if (state.errorFile) {
+        showErrorToast(state.errorFile.server);
       }
     }
   }, [state]);
@@ -119,69 +178,95 @@ const FormTambahSoal = () => {
           const limitedData = data.slice(0, 50);
 
           const newInputGroups: InputGroup[] = limitedData.map(
-            (row: any, index: number) => ({
-              id: (index + 1).toString(),
-              soal: getNormalizedValue(row, ["soal", "pertanyaan", "question"]),
-              gambar: null,
-              tingkat: getNormalizedValue(row, ["tingkat", "kelas", "grade"]),
-              pelajaran: getNormalizedValue(row, [
-                "pelajaran",
-                "mata pelajaran",
-                "subject",
-              ]),
-              pilihan: [
-                {
-                  id: "A",
-                  text: getNormalizedValue(row, ["pilihan_a", "a", "option_a"]),
-                  benar:
-                    getNormalizedValue(row, [
-                      "jawaban",
-                      "jawaban_benar",
-                      "correct",
-                    ]).toUpperCase() === "A",
-                },
-                {
-                  id: "B",
-                  text: getNormalizedValue(row, ["pilihan_b", "b", "option_b"]),
-                  benar:
-                    getNormalizedValue(row, [
-                      "jawaban",
-                      "jawaban_benar",
-                      "correct",
-                    ]).toUpperCase() === "B",
-                },
-                {
-                  id: "C",
-                  text: getNormalizedValue(row, ["pilihan_c", "c", "option_c"]),
-                  benar:
-                    getNormalizedValue(row, [
-                      "jawaban",
-                      "jawaban_benar",
-                      "correct",
-                    ]).toUpperCase() === "C",
-                },
-                {
-                  id: "D",
-                  text: getNormalizedValue(row, ["pilihan_d", "d", "option_d"]),
-                  benar:
-                    getNormalizedValue(row, [
-                      "jawaban",
-                      "jawaban_benar",
-                      "correct",
-                    ]).toUpperCase() === "D",
-                },
-                {
-                  id: "E",
-                  text: getNormalizedValue(row, ["pilihan_e", "e", "option_e"]),
-                  benar:
-                    getNormalizedValue(row, [
-                      "jawaban",
-                      "jawaban_benar",
-                      "correct",
-                    ]).toUpperCase() === "E",
-                },
-              ],
-            })
+            (row: any, index: number) => {
+              // Get the answer key and convert it to the corresponding letter
+              const numericAnswer = getNormalizedValue(row, [
+                "jawaban",
+                "jawaban_benar",
+                "correct",
+                "kunci jawaban",
+              ]);
+
+              // Convert numeric answer (1-5) to letter (A-E)
+              const answerMap: { [key: string]: string } = {
+                "1": "A",
+                "2": "B",
+                "3": "C",
+                "4": "D",
+                "5": "E",
+              };
+
+              const correctAnswer = answerMap[numericAnswer] || "";
+
+              return {
+                id: (index + 1).toString(),
+                soal: getNormalizedValue(row, [
+                  "soal",
+                  "pertanyaan",
+                  "question",
+                ]),
+                gambar: null,
+                imageFile: null,
+                tingkat: getNormalizedValue(row, ["tingkat", "kelas", "grade"]),
+                pelajaran: getNormalizedValue(row, [
+                  "pelajaran",
+                  "mata pelajaran",
+                  "subject",
+                ]),
+                pilihan: [
+                  {
+                    id: "A",
+                    text: getNormalizedValue(row, [
+                      "pilihan_a",
+                      "a",
+                      "option_a",
+                      "jawab1",
+                    ]),
+                    benar: correctAnswer === "A",
+                  },
+                  {
+                    id: "B",
+                    text: getNormalizedValue(row, [
+                      "pilihan_b",
+                      "b",
+                      "option_b",
+                      "jawab2",
+                    ]),
+                    benar: correctAnswer === "B",
+                  },
+                  {
+                    id: "C",
+                    text: getNormalizedValue(row, [
+                      "pilihan_c",
+                      "c",
+                      "option_c",
+                      "jawab3",
+                    ]),
+                    benar: correctAnswer === "C",
+                  },
+                  {
+                    id: "D",
+                    text: getNormalizedValue(row, [
+                      "pilihan_d",
+                      "d",
+                      "option_d",
+                      "jawab4",
+                    ]),
+                    benar: correctAnswer === "D",
+                  },
+                  {
+                    id: "E",
+                    text: getNormalizedValue(row, [
+                      "pilihan_e",
+                      "e",
+                      "option_e",
+                      "jawab5",
+                    ]),
+                    benar: correctAnswer === "E",
+                  },
+                ],
+              };
+            }
           );
 
           const hasValidData = newInputGroups.some(
@@ -256,11 +341,17 @@ const FormTambahSoal = () => {
   ) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      const imageUrl = URL.createObjectURL(file); // ✅ Ubah File jadi string (URL)
+      const imageUrl = URL.createObjectURL(file);
 
       setInputGroups((prevGroups) =>
-        prevGroups.map(
-          (group) => (group.id === id ? { ...group, gambar: imageUrl } : group) // ✅ Simpan string
+        prevGroups.map((group) =>
+          group.id === id
+            ? {
+                ...group,
+                gambar: imageUrl, // For preview only
+                imageFile: file, // Store the actual file
+              }
+            : group
         )
       );
     }
@@ -274,6 +365,7 @@ const FormTambahSoal = () => {
         id: newId,
         soal: "",
         gambar: null,
+        imageFile: null,
         tingkat: prev[0].tingkat, // Copy from first group
         pelajaran: prev[0].pelajaran, // Copy from first group
         pilihan: Array.from({ length: 5 }, (_, i) => ({
@@ -285,10 +377,6 @@ const FormTambahSoal = () => {
     ]);
   };
 
-  const removeInputGroup = (id: string) => {
-    setInputGroups((prev) => prev.filter((group) => group.id !== id));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -297,17 +385,10 @@ const FormTambahSoal = () => {
     formData.append("pelajaran", selectedPelajaran);
 
     inputGroups.forEach((group, index) => {
-      let gambarKey: string | null = null;
-
-      if (group.gambar && (group.gambar as unknown) instanceof File) {
-        gambarKey = `gambar${index}`;
-        formData.append(gambarKey, group.gambar as unknown as File);
-      }
-
       const soalDataItem = {
         id: group.id,
         soal: group.soal,
-        gambar: gambarKey || group.gambar, // Jika bukan File, kirim URL gambar yang sudah ada
+        gambar: group.imageFile ? `gambar_${index}` : null,
         pilihan: group.pilihan.map((pilihan) => ({
           id: pilihan.id,
           text: pilihan.text,
@@ -315,13 +396,21 @@ const FormTambahSoal = () => {
         })),
       };
 
-      formData.append(`soalData[${index}]`, JSON.stringify(soalDataItem)); // ✅ Nama key diperbaiki
-      console.log("form:", soalDataItem);
+      formData.append(`soalData[${index}]`, JSON.stringify(soalDataItem));
+
+      // Tambahkan file gambar jika ada
+      if (group.imageFile) {
+        formData.append(`gambar_${index}`, group.imageFile);
+      }
     });
 
     startTransition(() => {
       formAction(formData);
     });
+  };
+
+  const removeInputGroup = (id: string) => {
+    setInputGroups((prev) => prev.filter((group) => group.id !== id));
   };
 
   return (
@@ -429,7 +518,8 @@ const FormTambahSoal = () => {
                   ) : (
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <p className="mb-2 text-sm text-gray-500">
-                        Click untuk upload
+                        Click untuk upload atau seret untuk menambahkan gambar
+                        (Opasional)
                       </p>
                     </div>
                   )}

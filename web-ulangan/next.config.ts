@@ -2,11 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  api: {
-    bodyParser: {
-      sizeLimit: "10mb", // Menaikkan limit untuk mengakomodasi data lebih besar
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "50mb", // Batas ukuran request body
     },
-    responseLimit: false,
   },
 };
 

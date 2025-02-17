@@ -106,7 +106,7 @@ export const AddSiswaSchema = z.object({
 });
 export type AddSiswaInput = z.infer<typeof AddSiswaSchema>;
 
-const MAX_FILE_SIZE = 5000000; // 5MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
