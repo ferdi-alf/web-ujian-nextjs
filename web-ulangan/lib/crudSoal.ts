@@ -73,15 +73,13 @@ export const AddSoal = async (prevState: unknown, formData: FormData) => {
         }
 
         // Validate file type
-        const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
         if (!allowedTypes.includes(file.type)) {
           return {
             success: false,
-            errorFile: {
-              server: `Tipe file untuk soal ${
-                i + 1
-              } tidak valid. Hanya menerima JPEG, PNG, atau GIF`,
-            },
+            errorFile: `Tipe file untuk soal ${
+              i + 1
+            } tidak valid. Hanya menerima JPEG, PNG, atau WEBP`,
           };
         }
 

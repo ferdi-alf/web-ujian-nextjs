@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -34,6 +35,59 @@ interface PilihanJawaban {
   text: string;
   benar: boolean;
 }
+
+type ErrorWithMessages = {
+  _errors?: string[];
+};
+
+type SoalItemError = {
+  soal?: ErrorWithMessages;
+  pilihan?: ErrorWithMessages & {
+    [key: number]: {
+      text?: ErrorWithMessages;
+    };
+  };
+};
+
+type SoalDataError = {
+  soalData?: {
+    [key: number]: SoalItemError;
+  };
+};
+
+// Helper functions untuk setiap jenis error
+const getSoalError = (
+  error: SoalDataError | undefined,
+  index: number
+): string => {
+  if (!error?.soalData?.[index]?.soal?._errors?.length) {
+    return "";
+  }
+  return error.soalData[index].soal._errors[0];
+};
+
+const getPilihanArrayError = (
+  error: SoalDataError | undefined,
+  index: number
+): string => {
+  if (!error?.soalData?.[index]?.pilihan?._errors?.length) {
+    return "";
+  }
+  return error.soalData[index].pilihan._errors[0];
+};
+
+const getPilihanTextError = (
+  error: SoalDataError | undefined,
+  index: number,
+  pIndex: number
+): string => {
+  if (!error?.soalData?.[index]?.pilihan?.[pIndex]?.text?._errors?.length) {
+    return "";
+  }
+  return error.soalData[index].pilihan[pIndex].text._errors[0];
+};
+
+// Type guard
 
 const useResetForm = (
   success: boolean,
@@ -155,8 +209,8 @@ const FormTambahSoal = () => {
       // Error soal
       else if (state.error && "soalData" in state.error) {
         showErrorToast("Ada beberapa soal yang belum diisi dengan lengkap");
-      } else if (state.errorFile) {
-        showErrorToast(state.errorFile.server);
+      } else if (state.error && "server" in state.error) {
+        showErrorToast(state.error.server);
       }
     }
   }, [state]);
@@ -551,11 +605,15 @@ const FormTambahSoal = () => {
                 }`}
                 minRows={3}
               />
-              {state?.error?.soalData?.[index]?.soal?._errors?.length > 0 && (
-                <p className="text-red-500 text-sm mt-1">
-                  {state?.error?.soalData?.[index]?.soal?._errors?.[0]}
-                </p>
-              )}
+              {(() => {
+                const errorMessage = getSoalError(
+                  state?.error as SoalDataError,
+                  index
+                );
+                return errorMessage ? (
+                  <p className="text-red-500 text-sm mt-1">{errorMessage}</p>
+                ) : null;
+              })()}
 
               {group.pilihan.map((pilihan, pIndex) => (
                 <div key={pilihan.id} className="flex flex-col">
@@ -606,34 +664,40 @@ const FormTambahSoal = () => {
                         )
                       }
                       className={`bg-gray-50 border ${
-                        state?.error?.soalData?.[index]?.pilihan?.[pIndex]?.text
-                          ?._errors?.length > 0
+                        getPilihanArrayError(
+                          state?.error as SoalDataError,
+                          index
+                        )
                           ? "border-red-500"
-                          : "border-gray-300"
+                          : "border-gray-600"
                       } text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5`}
                     />
                   </div>
-                  {state?.error?.soalData?.[index]?.pilihan?.[pIndex]?.text
-                    ?._errors?.length > 0 && (
-                    <p
-                      key={`error-${pilihan.id}`}
-                      className="text-red-500 text-sm mt-1 pl-6"
-                    >
-                      {
-                        state.error.soalData[index].pilihan[pIndex].text
-                          ._errors[0]
-                      }
-                    </p>
-                  )}
+
+                  {(() => {
+                    const errorMessage = getPilihanTextError(
+                      state?.error as SoalDataError,
+                      index,
+                      pIndex
+                    );
+                    return errorMessage ? (
+                      <p className="text-red-500 text-sm mt-1 pl-6">
+                        {errorMessage}
+                      </p>
+                    ) : null;
+                  })()}
                 </div>
               ))}
 
-              {state?.error?.soalData?.[index]?.pilihan?._errors?.length >
-                0 && (
-                <p className="text-red-500 text-sm mt-1">
-                  {state.error.soalData[index].pilihan._errors[0]}
-                </p>
-              )}
+              {(() => {
+                const errorMessage = getPilihanArrayError(
+                  state?.error as SoalDataError,
+                  index
+                );
+                return errorMessage ? (
+                  <p className="text-red-500 text-sm mt-1">{errorMessage}</p>
+                ) : null;
+              })()}
             </div>
           ))}
 
