@@ -53,8 +53,9 @@ const downloadPDF = async ({
         <span style="font-weight: bold; margin-right: 8px;">${index + 1}.</span>
         <div style="display: flex; flex-direction: column;">
          ${
-           soal.gambar &&
-           `<img src=${soal.gambar} style="width: 8rem; height: auto"/>`
+           soal.gambar !== null
+             ? `<img src=${soal.gambar} style="width: 8rem; height: auto"/>`
+             : ""
          }
         <span style="font-weight: 500;">${soal.soal}</span>
         </div>
