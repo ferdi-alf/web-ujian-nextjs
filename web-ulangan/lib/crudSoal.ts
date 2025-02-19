@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
+import { auth } from "@/auth";
 import { AddSoalSchema } from "./zod";
+import { prisma } from "./prisma";
+import { redirect } from "next/navigation";
 
 export const AddSoal = async (prevState: unknown, formData: FormData) => {
   try {
@@ -129,5 +132,36 @@ export const AddSoal = async (prevState: unknown, formData: FormData) => {
             : "Terjadi kesalahan pada server",
       },
     };
+  }
+};
+
+export const getSoal = async () => {
+  const session = await auth();
+
+  const notRole = !(
+    session?.user?.role === "ADMIN" ||
+    session?.user?.role === "SUPERADMIN" ||
+    session?.user?.role === "PROKTOR"
+  );
+
+  if (!session || notRole) {
+    redirect("/");
+  }
+
+  try {
+    const data = await prisma.mataPelajaran.findMany({
+      include: {
+        soal: {
+          include: {
+            Jawaban: true,
+          },
+        },
+      },
+    });
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    return [];
   }
 };

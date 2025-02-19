@@ -118,7 +118,7 @@ model Soal{
   soal String
   mataPelajaranId String
   mataPelajaran MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
-  Jawaaban Jawaban[]
+  Jawaban Jawaban[]
   @@map("soal")
 }
 

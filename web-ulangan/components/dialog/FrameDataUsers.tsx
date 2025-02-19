@@ -201,7 +201,7 @@ const FrameDataUsers = ({
               </div>
             </div>
 
-            <div className=" py-2">
+            <div className="py-2">
               <Box sx={{ width: "100%" }}>
                 <Paper>
                   <div className="w-full pr-3 pt-4 flex justify-end">
