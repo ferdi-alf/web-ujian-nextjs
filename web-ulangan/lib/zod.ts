@@ -205,3 +205,25 @@ export const AddSoalSchema = z.object({
 });
 
 export type AddSoalInput = z.infer<typeof AddSoalSchema>;
+
+export const updateSoalSchema = z.object({
+  soal: z.string().min(1, { message: "Soal tidak boleh kosong" }),
+  mataPelajaranId: z
+    .string()
+    .min(1, { message: "Mata pelajaran harus dipilih" }),
+  gambar: z.string().optional(),
+  Jawaban: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        jawaban: z
+          .string()
+          .min(1, { message: "Pilihan jawaban tidak boleh kosong" }),
+        benar: z.boolean(),
+      })
+    )
+    .min(2, { message: "Minimal harus ada 2 pilihan jawaban" })
+    .refine((data) => data.some((item) => item.benar), {
+      message: "Harus ada setidaknya satu jawaban yang benar",
+    }),
+});

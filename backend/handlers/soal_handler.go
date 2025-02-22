@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/models"
 	"backend/utils"
+	validators "backend/validations"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -59,6 +60,14 @@ func (h *SoalHandler) AddSoal(c *fiber.Ctx) error {
     }
 
     fmt.Printf("Successfully parsed %d soal items\n", len(soalDataArr))
+
+     if err := validators.ValidateSoalInput(tingkat, pelajaran, soalDataArr, form.File); err != nil {
+        fmt.Printf("Validation error: %v\n", err)
+        return c.Status(400).JSON(fiber.Map{
+            "success": false,
+            "message": err.Error(),
+        })
+    }
 
     tx, err := h.DB.Begin()
     if err != nil {

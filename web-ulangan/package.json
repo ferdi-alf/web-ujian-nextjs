@@ -51,7 +51,8 @@
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.4",
     "xlsx": "https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

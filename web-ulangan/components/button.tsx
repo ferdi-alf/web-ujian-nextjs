@@ -76,7 +76,7 @@ export const FormButton = () => {
       ) : null}
       <button
         onClick={handleModalClick}
-        className="p-3 hover:bg-blue-700 font-semibold bg-blue-500 rounded-md uppercase text-lg text-white w-full mt-10"
+        className="p-3 hover:bg-blue-700 font-semibold bg-blue-500 rounded-md uppercase text-lg text-white w-full mt-7"
         type="submit"
       >
         {pending ? "Loading..." : "Submit"}

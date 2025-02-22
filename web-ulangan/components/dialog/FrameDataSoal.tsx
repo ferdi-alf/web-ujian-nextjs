@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { Box } from "@mui/material";
-import { Check, MoveLeft } from "lucide-react";
+import { Check, MoveLeft, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import downloadPDF from "@/components/downloadSoalPdf";
+import ModalUpdateSoal from "./ModalUpdateSoal";
 
 interface SoalData {
   id: string;
@@ -42,7 +43,16 @@ const FrameDataSoal = ({
       (item) => item.tingkat === tingkat && item.pelajaran === pelajaran
     );
 
-    return Array.isArray(subjectObject?.soal) ? subjectObject.soal : [];
+    return Array.isArray(subjectObject?.soal)
+      ? [...subjectObject.soal].sort((a, b) => {
+          // Sort by creation date
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          // OR sort by ID if you prefer
+          // return a.id.localeCompare(b.id);
+        })
+      : [];
   }, [soalList, tingkat, pelajaran]);
 
   console.log("filter:", filteredSoal);
@@ -100,14 +110,22 @@ const FrameDataSoal = ({
                     </button>
                     <button
                       type="button"
-                      className="text-white bg-gradient-to-r from-green-400 via-green-500 to-green-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                      className="text-white bg-gradient-to-r from-green-400 via-green-500 to-green-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
                     >
                       Unduh Soal Excel
                     </button>
                   </div>
                   {filteredSoal.map((soal, index) => (
                     <div key={soal.id} className="p-3 mt-3 shadow-md">
-                      <p className="font-bold text-lg">{index + 1}</p>
+                      <div className="flex w-full justify-between items-center">
+                        <p className="font-bold text-lg">{index + 1}</p>
+                        <div className="flex flex-nowrap gap-x-2">
+                          <ModalUpdateSoal soal={soal} />
+                          <button className="p-2 rounded-sm cursor-pointer focus:ring-2 bg-gray-100 focus:ring-gray-500 ">
+                            <Trash2Icon />
+                          </button>
+                        </div>
+                      </div>
                       {soal.gambar && (
                         <img
                           src={soal.gambar}

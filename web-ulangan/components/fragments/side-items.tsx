@@ -4,6 +4,8 @@ import {
   BookOpenCheck,
   ChartCandlestick,
   ChartColumn,
+  ChevronDown,
+  ChevronRight,
   Home,
   LibraryBig,
   NotebookPen,
@@ -15,7 +17,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
 const items = [
   {
@@ -72,76 +75,85 @@ const items = [
 
 const SideItems = () => {
   const pathname = usePathname();
-  //   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
-  //     Siswa: false,
-  //     BankSoal: false,
-  //   });
+  const router = useRouter();
+  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
+    Siswa: false,
+    BankSoal: false,
+  });
 
-  //   const handleDropdownClick = (title: string) => {
-  //     setOpenDropdowns((prev) => ({
-  //       ...prev,
-  //       [title]: !prev[title],
-  //     }));
-  //   };
+  const handleNavigation = (url: string) => {
+    router.push(url);
+  };
+
+  const handleDropdownClick = (title: string) => {
+    setOpenDropdowns((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
   return (
-    <div className="mt-5">
-      <p className="font-semibold text-slate-400">Platform</p>
-      <div className="flex flex-col gap-y-1">
-        {items.map((item) => (
-          <div key={item.title}>
-            {item.subItems ? (
-              <>
-                <div
-                  className="p-2 "
-                  // onClick={() => handleDropdownClick(item.title)} // Menggunakan fungsi umum
-                >
-                  <div className="flex justify-between">
-                    <div className="flex gap-x-3">
-                      <item.icon />
-                      <span className="font-semibold">{item.title}</span>
+    <>
+      <div className="mt-5">
+        <p className="font-semibold text-slate-400">Platform</p>
+        <div className="flex flex-col gap-y-1">
+          {items.map((item) => (
+            <div key={item.title}>
+              {item.subItems ? (
+                <>
+                  <div
+                    className="p-2 "
+                    onClick={() => handleDropdownClick(item.title)} // Menggunakan fungsi umum
+                  >
+                    <div className="flex justify-between">
+                      <div className="flex gap-x-3">
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </div>
+                      {openDropdowns[item.title] ? (
+                        <ChevronDown className="text-gray-400" />
+                      ) : (
+                        <ChevronRight className="text-gray-400" />
+                      )}
                     </div>
-                    {/* {openDropdowns[item.title] ? (
-                    <ChevronDown />
-                  ) : (
-                    <ChevronRight />
-                  )} */}
                   </div>
-                </div>
-                {/* Dropdown untuk sub-item */}
-                {/* {openDropdowns[item.title] && ( */}
-                <div className="pl-6 mt-2">
-                  {item.subItems.map((subItem) => (
-                    <div
-                      key={subItem.title}
-                      className={`p-2 rounded-sm hover:bg-slate-50 ${
-                        pathname === subItem.url ? "bg-slate-100" : ""
-                      }`}
-                    >
-                      <Link href={subItem.url} className="flex gap-x-3">
-                        <subItem.icon />
-                        <span>{subItem.title}</span>
-                      </Link>
+                  {/* Dropdown untuk sub-item */}
+                  {openDropdowns[item.title] && (
+                    <div className="pl-6 mt-2  ">
+                      {item.subItems.map((subItem) => (
+                        <div
+                          key={subItem.title}
+                          className={`p-2 border-l rounded-sm hover:bg-slate-50 ${
+                            pathname === subItem.url ? "bg-slate-100" : ""
+                          }`}
+                          onClick={() => handleNavigation(subItem.url)}
+                        >
+                          <Link href={subItem.url} className="flex gap-x-3">
+                            <subItem.icon />
+                            <span>{subItem.title}</span>
+                          </Link>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </>
+              ) : (
+                <div
+                  className={`p-2 rounded-sm hover:bg-slate-50 ${
+                    pathname === item.url ? "bg-slate-100" : ""
+                  }`}
+                  onClick={() => handleNavigation(item.url)}
+                >
+                  <Link href={item.url} className="flex gap-x-3">
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
                 </div>
-                {/* )} */}
-              </>
-            ) : (
-              <div
-                className={`p-2 rounded-sm hover:bg-slate-50 ${
-                  pathname === item.url ? "bg-slate-100" : ""
-                }`}
-              >
-                <Link href={item.url} className="flex gap-x-3">
-                  <item.icon />
-                  <span className="font-semibold">{item.title}</span>
-                </Link>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

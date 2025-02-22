@@ -4,6 +4,7 @@ import Sidebar from "@/components/sidebar";
 import NavbarDashboard from "@/components/navbar-dashboard";
 import { SidebarProvider } from "@/components/providers/sidebar-provider";
 import { Toaster } from "react-hot-toast";
+import { NavigationEvents } from "@/components/fragments/navigation-events";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,17 +23,16 @@ export const metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <div
       className={`${geistSans.variable} ${geistMono.variable} antialiased relative overflow-x-hidden bg-white`}
     >
       <SidebarProvider>
         <Toaster position="top-right" />
+        <NavigationEvents /> {/* Loading akan muncul di sini */}
         <div className="flex">
-          <div className="relative w-auto">
+          <div className="relative">
             <Sidebar />
           </div>
           <div className="flex relative h-screen overflow-y-auto w-full flex-col">

@@ -209,8 +209,16 @@ const FormTambahSoal = () => {
       // Error soal
       else if (state.error && "soalData" in state.error) {
         showErrorToast("Ada beberapa soal yang belum diisi dengan lengkap");
-      } else if (state.error && "server" in state.error) {
-        showErrorToast(state.error.server);
+      } // Di client-side
+      else if (state.error && "server" in state.error) {
+        // Coba parse string JSON jika error.server adalah string JSON
+        try {
+          const errorData = JSON.parse(state.error.server);
+          showErrorToast(errorData.message || state.error.server);
+        } catch (e) {
+          // Jika bukan JSON valid, tampilkan apa adanya
+          showErrorToast(state.error.server);
+        }
       }
     }
   }, [state]);
