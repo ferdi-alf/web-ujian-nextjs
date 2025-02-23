@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TextareaAutosize } from "@mui/material";
 import Image from "next/image";
 import React, { useState } from "react";
-import { FormButton } from "../button";
-import { showSuccessToast } from "../toast/ToastSuccess";
+import { showErrorToast, showSuccessToast } from "../toast/ToastSuccess";
 import { mutate } from "swr";
 
 interface Jawaban {
@@ -22,14 +22,11 @@ interface SoalType {
 
 interface FormUpdateSoalProps {
   soal: SoalType;
-  onSubmit: (updateSoal: SoalType) => void;
-  errors?: Record<string, string[]>;
+  onSuccess?: () => void;
 }
-const FormUpdateSoal = ({
-  soal,
-  errors = {},
-  onSubmit,
-}: FormUpdateSoalProps) => {
+const FormUpdateSoal = ({ soal, onSuccess }: FormUpdateSoalProps) => {
+  const [errors, setError] = useState<Record<string, any>>({});
+  const [isLoading, setIsLoading] = useState(false);
   const [formState, setFormState] = useState<SoalType>({
     ...soal,
     Jawaban: [...soal.Jawaban],
@@ -76,6 +73,8 @@ const FormUpdateSoal = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError({});
 
     const formData = new FormData();
 
@@ -97,11 +96,17 @@ const FormUpdateSoal = ({
       const response = await fetch(`/api/soal/${formState.id}`, {
         method: "PUT",
         body: formData,
+        credentials: "include",
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.log(errorData);
+        if (errorData.error) {
+          showErrorToast(errorData.message);
+        }
+        setError(errorData.error || {});
+        console.log("error:", errorData);
+        setIsLoading(false);
         return;
       }
       if (response.ok) {
@@ -109,17 +114,33 @@ const FormUpdateSoal = ({
         if (success.success) {
           showSuccessToast(success.message);
           mutate("soal");
+          onSuccess?.();
         }
-      }
-
-      const updatedSoal = await response.json();
-      if (onSubmit) {
-        onSubmit(updatedSoal);
-        console.log("wkwkw", updatedSoal);
       }
     } catch (error) {
       console.log("Error updating soal:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const FormButtonFetch = () => {
+    return (
+      <>
+        {isLoading ? (
+          <div className="fixed inset-0 h-screen bg-black/40 z-50 flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+          </div>
+        ) : null}
+        <button
+          className="p-3 hover:bg-blue-700 font-semibold bg-blue-500 rounded-md uppercase text-lg text-white w-full mt-7"
+          type="submit"
+          disabled={isLoading}
+        >
+          {isLoading ? "Loading..." : "Submit"}
+        </button>
+      </>
+    );
   };
 
   return (
@@ -169,9 +190,10 @@ const FormUpdateSoal = ({
         />
       </label>
 
-      {/* Error message for image if any */}
-      {errors.gambar && (
-        <p className="text-red-500 text-xs mt-1">{errors.gambar}</p>
+      {errors.gambar?._errors?.length > 0 && (
+        <p className="text-red-500 text-start text-xs ">
+          {errors.gambar._errors[0]}
+        </p>
       )}
 
       {/* Question text */}
@@ -183,8 +205,10 @@ const FormUpdateSoal = ({
         className="w-full mt-3 p-2 border border-gray-300 rounded-md"
         minRows={2}
       />
-      {errors.soal && (
-        <p className="text-red-500 text-xs mt-1">{errors.soal}</p>
+      {errors.soal?._errors?.length > 0 && (
+        <p className="text-red-500 text-start text-xs ">
+          {errors.soal._errors[0]}
+        </p>
       )}
 
       {/* Answer options */}
@@ -210,15 +234,23 @@ const FormUpdateSoal = ({
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
               />
             </div>
-            {errors[`jawaban[${index}]`] && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors[`jawaban[${index}]`]}
-              </p>
-            )}
+
+            {/* ✅ Hanya menampilkan error untuk jawaban dengan index yang sesuai */}
+            {typeof errors.Jawaban?.[index] === "object" &&
+              errors.Jawaban?.[index]?.jawaban?._errors?.map(
+                (err: string, idx: number) => (
+                  <p
+                    key={`${index}-${idx}`}
+                    className="text-red-500 text-start text-xs mt-1"
+                  >
+                    {err}
+                  </p>
+                )
+              )}
           </div>
         ))}
       </div>
-      <FormButton />
+      <FormButtonFetch />
     </form>
   );
 };

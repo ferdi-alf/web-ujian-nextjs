@@ -211,7 +211,21 @@ export const updateSoalSchema = z.object({
   mataPelajaranId: z
     .string()
     .min(1, { message: "Mata pelajaran harus dipilih" }),
-  gambar: z.string().optional(),
+  gambar: z
+    .union([
+      z.string(),
+      z
+        .instanceof(File)
+        .refine((file) => file.size <= MAX_FILE_SIZE, {
+          message: "Ukuran maksimal file adalah 5MB",
+        })
+        .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), {
+          message: "Format file harus jpeg, jpg, png, atau webp",
+        }),
+      z.null(), // Explicitly allow null
+    ])
+    .optional() // Make the whole union optional
+    .nullable(), // Allow null values
   Jawaban: z
     .array(
       z.object({

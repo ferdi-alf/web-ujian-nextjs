@@ -40,23 +40,17 @@ const ModalUpdateSiswa = ({ siswa }: ModalSiswaProps) => {
     event.stopPropagation();
   };
 
-  // Buat wrapper untuk formAction
   const handleSubmit = async (formData: FormData) => {
-    // Ambil file dari input
     const fileInput = document.querySelector(
       "#dropzone-file"
     ) as HTMLInputElement;
     const file = fileInput?.files?.[0];
 
-    // Jika ada file baru, tambahkan ke FormData
     if (file) {
-      // Hapus data image yang lama jika ada
       formData.delete("image");
-      // Tambahkan file baru
       formData.append("image", file);
     }
 
-    // Kirim ke server menggunakan formAction
     return formAction(formData);
   };
 

@@ -1,13 +1,13 @@
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PencilIcon } from "lucide-react";
 import FormUpdateSoal from "../fragments/form-updateSoal";
+import { useState } from "react";
 
 interface JawabanType {
   id: string;
@@ -24,26 +24,17 @@ interface SoalType {
   Jawaban: JawabanType[];
 }
 const ModalUpdateSoal = ({ soal }: { soal: SoalType }) => {
-  const handleFormSubmit = async (updatedSoal: SoalType) => {
-    try {
-      // Your API update logic here
-      console.log("Submitting updated soal:", updatedSoal);
-      // Implementasi logika API update di sini
-    } catch (error) {
-      console.error("Error updating soal:", error);
-    }
-  };
+  const [open, setOpen] = useState(false);
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger className="p-2 flex flex-nowrap items-center gap-x-1 shadow-md rounded-md text-sm font-bold text-white bg-blue-500">
         <PencilIcon />
       </DialogTrigger>
       <DialogContent className=" h-[95%] overflow-x-auto">
         <DialogHeader>
           <DialogTitle>Edit Data Soal</DialogTitle>
-          <FormUpdateSoal soal={soal} onSubmit={handleFormSubmit} />
+          <FormUpdateSoal soal={soal} onSuccess={() => setOpen(false)} />
         </DialogHeader>
-        <DialogFooter>{/* <FormButton /> */}</DialogFooter>
       </DialogContent>
     </Dialog>
   );

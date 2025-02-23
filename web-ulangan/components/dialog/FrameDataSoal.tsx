@@ -6,6 +6,8 @@ import { Check, MoveLeft, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import downloadPDF from "@/components/downloadSoalPdf";
 import ModalUpdateSoal from "./ModalUpdateSoal";
+import { showErrorToast, showSuccessToast } from "../toast/ToastSuccess";
+import { mutate } from "swr";
 
 interface SoalData {
   id: string;
@@ -45,17 +47,39 @@ const FrameDataSoal = ({
 
     return Array.isArray(subjectObject?.soal)
       ? [...subjectObject.soal].sort((a, b) => {
-          // Sort by creation date
           return (
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
-          // OR sort by ID if you prefer
-          // return a.id.localeCompare(b.id);
         })
       : [];
   }, [soalList, tingkat, pelajaran]);
 
-  console.log("filter:", filteredSoal);
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/soal/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const res = await response.json();
+        if (res.error) {
+          showErrorToast(res.message || "Terjadi Kesalahan");
+          return;
+        }
+      }
+
+      if (response.ok) {
+        const success = await response.json();
+        if (success.success) {
+          showSuccessToast(success.message || {});
+          mutate("soal");
+        }
+      }
+    } catch (error) {
+      console.log("Error", error);
+    }
+  };
 
   const handleShowFrame = () => {
     setFrame((prev) => !prev);
@@ -104,7 +128,7 @@ const FrameDataSoal = ({
                           tingkat: tingkat,
                         })
                       }
-                      className="text-white bg-gradient-to-r from-red-400 via-red-500 to-red-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                      className="text-white bg-gradient-to-r from-red-400 via-red-500 to-red-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-red-300  font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
                     >
                       Unduh Soal PDF
                     </button>
@@ -121,7 +145,10 @@ const FrameDataSoal = ({
                         <p className="font-bold text-lg">{index + 1}</p>
                         <div className="flex flex-nowrap gap-x-2">
                           <ModalUpdateSoal soal={soal} />
-                          <button className="p-2 rounded-sm cursor-pointer focus:ring-2 bg-gray-100 focus:ring-gray-500 ">
+                          <button
+                            onClick={() => handleDelete(soal.id)}
+                            className="p-2 rounded-sm cursor-pointer focus:ring-2 bg-gray-100 focus:ring-gray-500 "
+                          >
                             <Trash2Icon />
                           </button>
                         </div>
