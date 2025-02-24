@@ -4,7 +4,6 @@ import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import { AddUserSchema } from "@/lib/zod";
 import { hash } from "bcrypt-ts";
-import { revalidatePath } from "next/cache";
 
 export async function GET() {
   // Ambil session untuk mengecek apakah pengguna sudah login
@@ -59,7 +58,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const sessionToken = cookieStore.get("next-auth.session-token")?.value;
+    const sessionToken = cookieStore.get("authjs.session-token")?.value;
 
     if (!sessionToken) {
       return NextResponse.json(
@@ -112,7 +111,6 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
       },
     });
-    revalidatePath("/users");
     return NextResponse.json({ succes: true, data: newUsers }, { status: 201 });
   } catch (error) {
     console.error("Error in /api/kelas:", error);

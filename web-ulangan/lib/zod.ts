@@ -241,3 +241,18 @@ export const updateSoalSchema = z.object({
       message: "Harus ada setidaknya satu jawaban yang benar",
     }),
 });
+
+export const AddUjian = object({
+  mataPelajaran: z.string().min(1, { message: "Mata pelajaran harus dipilih" }),
+
+  waktuPengerjaan: z
+    .string()
+    .min(1, { message: "Waktu pengerjaan harus diisi" }),
+
+  token: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 5, {
+      message: "Token harus memiliki minimal 5 karakter jika diisi",
+    }),
+});

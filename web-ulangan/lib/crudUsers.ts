@@ -22,13 +22,13 @@ export const AddUser = async (prevState: unknown, formData: FormData) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("next-auth.session-token");
+    const sessionCookie = cookieStore.get("authjs.session-token");
 
     const response = await fetch(`${apiUrl}/api/user`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `next-auth.session-token=${sessionCookie?.value}`,
+        Cookie: `authjs.session-token=${sessionCookie?.value}`,
       },
       body: JSON.stringify({ username, role, kelasId, password }),
       credentials: "include",

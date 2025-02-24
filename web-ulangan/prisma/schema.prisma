@@ -77,7 +77,7 @@ model User {
   accounts Account[]
   sessions Session[]
   siswaDetail SiswaDetail?
-  kelas Kelas? @relation(fields: [kelasId], references: [id], onDelete: Cascade) // Buat juga nullable
+  kelas Kelas? @relation(fields: [kelasId], references: [id], onDelete: Cascade) 
 
   @@map("users")
 }
@@ -109,6 +109,7 @@ model MataPelajaran {
   tingkat Tingkat
   pelajaran String
   soal Soal[]
+  ujian Ujian[]
   @@map("mata_pelajaran")
 }
 
@@ -129,6 +130,22 @@ model Jawaban {
   benar Boolean
   soal Soal @relation(fields: [soalId], references: [id], onDelete: Cascade)
   @@map("jawaban")
+}
+
+enum Status {
+  pending
+  active
+  selesai
+}
+
+model Ujian{
+  id String @id @default(cuid())
+  mataPelajaranId String
+  mataPelajaran MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
+  token String? @unique
+  waktuPengerjaan Int
+  status Status @default(pending)
+  @@map("ujian")
 }
 
  

@@ -113,7 +113,7 @@ export const getSiswa = async () => {
   );
 
   if (!session || notRole) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   try {
