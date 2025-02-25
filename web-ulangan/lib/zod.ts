@@ -242,12 +242,17 @@ export const updateSoalSchema = z.object({
     }),
 });
 
+const WaktuPengerjaanEnum = z.enum(["30", "60", "120"]);
+const StatusEnum = z.enum(["pending", "active", "selesai"], {
+  message: "status hanya boleh pending, active atau selesai",
+});
+
 export const AddUjian = object({
   mataPelajaran: z.string().min(1, { message: "Mata pelajaran harus dipilih" }),
 
-  waktuPengerjaan: z
-    .string()
-    .min(1, { message: "Waktu pengerjaan harus diisi" }),
+  waktuPengerjaan: WaktuPengerjaanEnum.refine((val) => val !== undefined, {
+    message: "Waktu pengerjaan harus dipilih",
+  }),
 
   token: z
     .string()
@@ -255,4 +260,24 @@ export const AddUjian = object({
     .refine((val) => !val || val.length >= 5, {
       message: "Token harus memiliki minimal 5 karakter jika diisi",
     }),
+});
+
+export const updateUjianSchema = object({
+  id: z.string().min(5, { message: "id tidak ada" }),
+  waktuPengerjaan: WaktuPengerjaanEnum.refine((val) => val !== undefined, {
+    message: "Waktu pengerjaan harus dipilih",
+  }),
+  status: StatusEnum.refine((val) => val !== undefined, {
+    message: "Status harus dipilih",
+  }),
+  token: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 5, {
+      message: "Token harus memiliki minimal 5 karakter jika diisi",
+    }),
+});
+
+export const tokenSchema = z.object({
+  token: z.string().min(1, { message: "token tidak boleh kosong" }),
 });

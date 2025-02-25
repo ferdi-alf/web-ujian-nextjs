@@ -72,11 +72,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         "/nilai",
       ];
 
-      const siswaRoutes = ["/ujian"];
+      // const siswaRoutes = ["/ujian"];
 
       const isAdminRoute = adminRoutes.includes(nextUrl.pathname);
       const isProktorRoute = proktorRoutes.includes(nextUrl.pathname);
-      const isSiswaRoute = siswaRoutes.includes(nextUrl.pathname);
+      const isSiswaRoute = nextUrl.pathname.startsWith("/ujian");
 
       // Redirect jika pengguna sudah login tetapi tetap di halaman utama "/"
       if (isLoggedIn && nextUrl.pathname === "/") {

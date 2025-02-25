@@ -18,7 +18,7 @@ const Navbar = () => {
             className="h-8"
             alt="Flowbite Logo"
           />
-          <span className="self-center text-2xl font-semibold whitespace-nowrap ">
+          <span className="self-center text-lg font-light sm:text-xl whitespace-nowrap ">
             SMKN 4 Palembang
           </span>
         </a>

@@ -1,32 +1,22 @@
 "use server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { AddUjian } from "@/lib/zod";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // const cookieStore = await cookies();
-    // const sessionToken = cookieStore.get("authjs.session-token")?.value;
-    const session = await auth();
-    const notRole = !(
-      session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN"
-    );
+    const authHeader = request.headers.get("Authorization");
+    const tokenAuth = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7) // Hapus 'Bearer ' dari string
+      : null;
 
-    // if (!sessionToken) {
-    //   return NextResponse.json(
-    //     { error: true, message: "No session token found", status: 401 },
-    //     { status: 401 }
-    //   );
-    // }
-    // if (!session || notRole) {
-    //   return NextResponse.json(
-    //     { error: true, message: "Unauthorized", status: 401 },
-    //     { status: 401 }
-    //   );
-    // }
+    if (!tokenAuth) {
+      return NextResponse.json(
+        { error: true, message: "Unauthorized", status: 401 },
+        { status: 401 }
+      );
+    }
 
     const body = await request.json();
     const validateFields = AddUjian.safeParse(body);

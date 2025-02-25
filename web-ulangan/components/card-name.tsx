@@ -9,18 +9,12 @@ const siswaDetail = session?.user?.id
       where: {
         userId: session.user.id,
       },
+      include: {
+        user: true,
+        kelas: true,
+      },
     })
   : null;
-
-console.log(siswaDetail);
-
-const formatDate = (date: Date) => {
-  return new Date(date).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-};
 
 const CardName = async () => {
   console.log(siswaDetail);
@@ -28,16 +22,29 @@ const CardName = async () => {
     <div className="p-8 bg-white/30 rounded-lg inset-0 backdrop-blur-md sm:w-3/5 shadow-lg max-w-md">
       <div className="flex flex-col gap-2">
         <div className="flex gap-2">
-          <p className="font-bold min-w-20">Nama:</p>
+          <p className="font-semibold min-w-20">Nama:</p>
           <p>{siswaDetail?.name || "-"}</p>
         </div>
         <div className="flex gap-2">
-          <p className="font-bold min-w-20">Tingkat:</p>
-          <p>{siswaDetail?.tingkat || "-"}</p>
+          <p className="font-semibold min-w-20">Kelas:</p>
+          <p>
+            {siswaDetail?.kelas.tingkat || "-"} -{" "}
+            {siswaDetail?.kelas.jurusan || "-"}
+          </p>
         </div>
         <div className="flex gap-2">
-          <p className="font-bold min-w-20">Jurusan:</p>
-          <p>{siswaDetail?.jurusan || "-"}</p>
+          <p className="font-semibold min-w-20">NIS/NISN:</p>
+          <p>{siswaDetail?.nis}</p>
+        </div>
+        <div className="flex gap-2">
+          <p className="font-semibold min-w-20">Ruang:</p>
+          <p>{siswaDetail?.ruang}</p>
+        </div>
+        <div className="flex gap-2">
+          <p className="font-semibold min-w-20">Status:</p>
+          <span className="bg-green-100 text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm  border border-green-400">
+            {siswaDetail?.status}
+          </span>
         </div>
       </div>
       <div className="mt-5 w-full">
