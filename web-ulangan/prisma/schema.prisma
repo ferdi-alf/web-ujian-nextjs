@@ -51,11 +51,7 @@ enum Role {
   ADMIN
   SUPERADMIN
 }
-enum Tingkat {
-  X
-  XI
-  XII
-}
+
 
 model Kelas {
   id String @id @default(cuid())
@@ -77,6 +73,7 @@ model User {
   accounts Account[]
   sessions Session[]
   siswaDetail SiswaDetail?
+  
   kelas Kelas? @relation(fields: [kelasId], references: [id], onDelete: Cascade) 
 
   @@map("users")
@@ -97,13 +94,17 @@ model SiswaDetail {
   nomor_ujian String
   ruang       String
   status      String   @default("AKTIF")
-
+  hasil Hasil[]
   kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("siswa_detail")
 }
 
-
+enum Tingkat {
+  X
+  XI
+  XII
+}
 model MataPelajaran {
   id String @id @default(cuid())
   tingkat Tingkat
@@ -144,8 +145,22 @@ model Ujian{
   mataPelajaran MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
   token String? @unique
   waktuPengerjaan Int
+  hasil Hasil[]
   status Status @default(pending)
   @@map("ujian")
+}
+
+model Hasil {
+  id String @id @default(cuid())
+  siswaDetailId String
+  ujianId String
+  waktuPengerjaan String
+  nilai String
+  benar String
+  salah String
+  siswaDetail SiswaDetail @relation(fields: [siswaDetailId], references: [id])
+  ujian Ujian @relation(fields: [ujianId], references: [id])
+  @@map("hasil")
 }
 
  

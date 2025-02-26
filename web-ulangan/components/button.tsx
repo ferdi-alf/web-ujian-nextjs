@@ -53,10 +53,19 @@ export const ButtonSignOut = () => {
 };
 
 export const TokenButton = () => {
+  const { pending } = useFormStatus();
   return (
-    <ShinyButton className="text-center bg-blue-500 sm:w-auto w-full h-10 shadow-md ">
-      Submit
-    </ShinyButton>
+    <>
+      {pending ? (
+        <div className="fixed top-0 left-0 w-full h-full bg-black/40 z-[9999] flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+        </div>
+      ) : null}
+
+      <ShinyButton className="text-center bg-blue-500 sm:w-auto w-full h-10 shadow-md ">
+        Submit
+      </ShinyButton>
+    </>
   );
 };
 

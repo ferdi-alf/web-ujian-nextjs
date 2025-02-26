@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 import { prisma } from "@/lib/prisma";
 import { AddUjian } from "@/lib/zod";
+import { Tingkat } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -104,5 +106,64 @@ export async function POST(request: NextRequest) {
     );
   } finally {
     await prisma.$disconnect();
+  }
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const pelajaran = searchParams.get("pelajaran");
+  const tingkat = searchParams.get("tingkat");
+
+  if (!pelajaran || !tingkat) {
+    return NextResponse.json(
+      {
+        error: true,
+        message: "Pelajaran dan tingkat harus diisi",
+        status: 400,
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // Cari ujian berdasarkan pelajaran dan tingkat
+    const ujian = await prisma.ujian.findFirst({
+      where: {
+        mataPelajaran: {
+          pelajaran: pelajaran,
+          tingkat: tingkat as Tingkat, // Pastikan tingkat sesuai dengan enum
+        },
+      },
+      include: {
+        mataPelajaran: true,
+      },
+    });
+
+    if (!ujian) {
+      return NextResponse.json(
+        { error: true, message: "Ujian tidak ditemukan", status: 404 },
+        { status: 404 }
+      );
+    }
+
+    // Ambil soal berdasarkan mataPelajaranId ujian
+    const soal = await prisma.soal.findMany({
+      where: { mataPelajaranId: ujian.mataPelajaranId },
+      include: { Jawaban: true },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        ujian,
+        soal,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: true, message: "Terjadi kesalahan server", status: 500 },
+      { status: 500 }
+    );
   }
 }

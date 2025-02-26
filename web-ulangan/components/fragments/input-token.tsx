@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 const InputToken = () => {
   const [state, formAction] = useActionState(toUjian, null);
   const router = useRouter();
-  console.log(state);
+  console.log("wkwkwk", state);
 
   useEffect(() => {
     if (state?.error) {
@@ -36,8 +36,41 @@ const InputToken = () => {
         required
         id="outlined-required"
         label="Token"
+        className="p-2 w-full"
         name="token"
-        placeholder="Massukan token ujian"
+        placeholder="Masukan token ujian"
+        sx={{
+          "& .MuiInput-root": {
+            backgroundColor: "transparent",
+            "&:before": {
+              borderBottom: "1px solid rgba(0, 0, 0, 0.42)", // Warna hitam saat tidak fokus
+            },
+            "&:hover:not(.Mui-disabled):before": {
+              borderBottom: "2px solid rgba(0, 0, 0, 0.87)",
+            },
+            "&:after": {
+              borderBottom: "2px solid #3b82f6", // Warna biru-500 untuk border bottom saat focus
+            },
+            "& input": {
+              color: "inherit",
+              backgroundColor: "transparent",
+              "&:-webkit-autofill": {
+                WebkitBoxShadow: "0 0 0 1000px transparent inset",
+                WebkitTextFillColor: "inherit",
+                transition: "background-color 5000s ease-in-out 0s",
+              },
+            },
+          },
+          "& .MuiInputLabel-root": {
+            color: "rgba(0, 0, 0, 0.7)", // Warna hitam saat tidak fokus
+            "&.Mui-focused": {
+              color: "#3b82f6", // Warna biru-500 saat focus
+            },
+          },
+          "& .MuiFormHelperText-root": {
+            color: "error.main",
+          },
+        }}
       />
       <TokenButton />
     </form>

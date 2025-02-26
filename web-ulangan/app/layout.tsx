@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased relative overflow-x-hidden bg-slate-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased relative overflow-x-hidden bg-white`}
       >
         {!disabledNavbar.includes(pathname) && (
           <>
@@ -50,7 +50,9 @@ export default function RootLayout({
           </>
         )}
 
-        <main className="h-screen">{children}</main>
+        <main className="flex relative h-screen overflow-y-auto w-full flex-col">
+          {children}
+        </main>
       </body>
     </html>
   );

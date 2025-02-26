@@ -9,7 +9,15 @@ export async function POST(req: Request) {
     const ujian = await prisma.ujian.findUnique({
       where: { token },
       include: {
-        mataPelajaran: true,
+        mataPelajaran: {
+          include: {
+            soal: {
+              include: {
+                Jawaban: true,
+              },
+            },
+          },
+        },
       },
     });
 
