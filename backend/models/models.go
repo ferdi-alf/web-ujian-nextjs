@@ -32,3 +32,19 @@ type Pilihan struct {
 	Text  string `json:"text"`
 	Benar bool   `json:"benar"`
 }
+
+type TypeKecurangan string
+
+const (
+	TabHidden      TypeKecurangan = "TAB_HIDDEN"
+	Blurred        TypeKecurangan = "BLURRED"
+	SplitScreen    TypeKecurangan = "SPLIT_SCREEN"
+	FloatingWindow TypeKecurangan = "FLOATING_WINDOW"
+)
+
+type CheatingEvent struct {
+	UjianID       string         `json:"ujianId"`
+	SiswaDetailID string         `json:"siswaDetailId"`
+	Type          TypeKecurangan `json:"type"`
+	Timestamp     int64          `json:"timestamp"`
+}

@@ -136,3 +136,50 @@ export async function PUT(
     );
   }
 }
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const siswaId = params.id;
+
+    const siswa = await prisma.siswaDetail.findUnique({
+      where: {
+        id: siswaId,
+      },
+      include: {
+        kelas: true,
+        user: {
+          select: {
+            image: true,
+          },
+        },
+      },
+    });
+
+    if (!siswa) {
+      return NextResponse.json(
+        { error: "Siswa tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      id: siswa.id,
+      name: siswa.name,
+      nis: siswa.nis,
+      profileImage: siswa.user.image || null,
+      kelas: {
+        tingkat: siswa.kelas.tingkat,
+        jurusan: siswa.kelas.jurusan,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching siswa:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}

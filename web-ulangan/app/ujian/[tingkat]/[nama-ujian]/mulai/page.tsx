@@ -9,7 +9,6 @@ const HalamanUjian = async ({
 }: {
   params: { tingkat: string; "nama-ujian": string };
 }) => {
-  console.log("params:", params);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   try {
@@ -26,9 +25,6 @@ const HalamanUjian = async ({
 
     const ujian = data?.ujian;
     const soal = data?.soal;
-
-    console.log("Data Ujian:", ujian);
-    console.log("Data Soal:", soal);
 
     if (!ujian) return notFound();
 

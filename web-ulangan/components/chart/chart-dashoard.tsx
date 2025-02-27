@@ -2,6 +2,7 @@
 
 import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts";
+import useSWR from "swr";
 
 import {
   Card,
@@ -17,62 +18,109 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-const chartData = [
-  { month: "January", desktop: 186 },
-  { month: "February", desktop: 305 },
-  { month: "March", desktop: 237 },
-  { month: "April", desktop: 73 },
-  { month: "May", desktop: 209 },
-  { month: "June", desktop: 214 },
-  { month: "Juli", desktop: 214 },
-  { month: "August", desktop: 214 },
-];
+import { useCheating } from "../CheatingContext";
+
+// Type for chart data
+interface ChartDataItem {
+  kelas: string;
+  count: number;
+}
+
+// Function to fetch cheating stats from API
+const fetchCheatingStats = async () => {
+  try {
+    const response = await fetch("/api/kecurangan/");
+    if (!response.ok) {
+      throw new Error("Failed to fetch cheating stats");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching cheating stats:", error);
+    throw error;
+  }
+};
 
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
+  count: {
+    label: "Jumlah Kecurangan",
     color: "hsl(var(--chart-blue-500))",
   },
 } satisfies ChartConfig;
 
 export function ChartDashboard() {
+  // Use SWR to fetch and update chart data
+  const {
+    data: chartData,
+    error,
+    isLoading,
+  } = useSWR("cheatingStats", fetchCheatingStats);
+
+  // Use the newCheatingEvent from context just to track when new events occur
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { newCheatingEvent } = useCheating();
+
+  // Prepare data for the chart
+  const preparedChartData = chartData
+    ? chartData.map((item: ChartDataItem) => ({
+        kelas: item.kelas,
+        count: item.count,
+      }))
+    : [];
+
   return (
-    <Card className="">
+    <Card
+      className={`${
+        preparedChartData.length === 0 ? "flex flex-col justify-between" : ""
+      }`}
+    >
       <CardHeader>
         <CardTitle>Bar Chart - Kecurangan Kelas</CardTitle>
-        <CardDescription>Tingkat X - XI</CardDescription>
+        <CardDescription>Tingkat X - XII</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="overflow-x-auto">
-          <BarChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              top: 20,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={8}>
-              <LabelList
-                position="top"
-                offset={12}
-                className="fill-foreground"
-                fontSize={12}
+        {isLoading ? (
+          <div className="h-64 flex items-center justify-center">
+            Loading data...
+          </div>
+        ) : error ? (
+          <div className="h-64 flex items-center justify-center text-red-500">
+            Error loading data
+          </div>
+        ) : preparedChartData.length === 0 ? (
+          <div className="h-64 flex items-center justify-center">
+            Belum ada data kecurangan
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig} className="overflow-x-auto ">
+            <BarChart
+              accessibilityLayer
+              data={preparedChartData}
+              margin={{
+                top: 26,
+              }}
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="kelas"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
               />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel />}
+              />
+              <Bar dataKey="count" fill="var(--color-count)" radius={8}>
+                <LabelList
+                  position="top"
+                  offset={12}
+                  className="fill-foreground"
+                  fontSize={12}
+                />
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        )}
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 font-medium leading-none">

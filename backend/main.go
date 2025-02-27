@@ -34,12 +34,20 @@ func main() {
 
     // Initialize handlers
     soalHandler := handlers.NewSoalHandler(db)
+     // Initialize handlers
+    cheatingHandler := handlers.NewCheatingHandler(db)
+    
+
+    // Tambahkan WebSocket & route
 
     // Routes
     app.Get("/", func(c *fiber.Ctx) error {
         return c.JSON(fiber.Map{"message": "API bekerja!"})
     })
     app.Post("/api/soal", soalHandler.AddSoal)
+   app.Post("/api/kecurangan", cheatingHandler.ReportCheating)
+    handlers.SetupWebSocket(app, db)
+
 
     // Start server - pindahkan ke akhir
     fmt.Println("Server starting on http://localhost:8050")

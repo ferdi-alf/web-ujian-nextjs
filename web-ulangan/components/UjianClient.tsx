@@ -46,36 +46,14 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
   const [state, formAction] = useActionState(submitUjian, null);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [currentSoalIndex, setCurrentSoalIndex] = useState(0);
-  const [isFloating, setIsFloating] = useState(false);
-
-  useEffect(() => {
-    let prevWidth = window.innerWidth;
-    let prevHeight = window.innerHeight;
-
-    const observer = new ResizeObserver(() => {
-      const widthDiff = Math.abs(window.innerWidth - prevWidth);
-      const heightDiff = Math.abs(window.innerHeight - prevHeight);
-
-      if (widthDiff > 300 || heightDiff > 300) {
-        console.log("Kemungkinan floating window terdeteksi!");
-        setIsFloating(true);
-      }
-
-      prevWidth = window.innerWidth;
-      prevHeight = window.innerHeight;
-    });
-
-    observer.observe(document.body);
-
-    return () => observer.disconnect();
-  }, []);
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, string>
   >({});
   const totalSoal = soalData.length;
+
   // ini dia inti dari fitur ahahaha🔥🔥🔥
   const { isTabHidden, isBlurred, isSplitScreen, isFloatingWindow, allClear } =
-    useCheatingDetection();
+    useCheatingDetection({ ujianId: ujian.id, siswaDetailId: siswaId });
 
   const [violations, setViolations] = useState<{
     count: number;

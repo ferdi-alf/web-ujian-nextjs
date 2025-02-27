@@ -52,7 +52,15 @@ enum Role {
   SUPERADMIN
 }
 
-
+enum Kelamin {
+  L
+  P
+}
+enum Tingkat {
+  X
+  XI
+  XII
+}
 model Kelas {
   id String @id @default(cuid())
   tingkat Tingkat
@@ -62,7 +70,22 @@ model Kelas {
 
   @@map("kelas")
 }
-
+model SiswaDetail {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  name        String
+  kelasId     String
+  nis         String
+  kelamin     Kelamin
+  nomor_ujian String
+  ruang       String
+  status      String   @default("AKTIF")
+  hasil Hasil[]
+  kecurangan Kecurangan[]
+  kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("siswa_detail")
+}
 model User {
   id       String  @id @default(cuid())
   username String? @unique
@@ -79,32 +102,8 @@ model User {
   @@map("users")
 }
 
-enum Kelamin {
-  L
-  P
-}
 
-model SiswaDetail {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  name        String
-  kelasId     String
-  nis         String
-  kelamin     Kelamin
-  nomor_ujian String
-  ruang       String
-  status      String   @default("AKTIF")
-  hasil Hasil[]
-  kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  @@map("siswa_detail")
-}
 
-enum Tingkat {
-  X
-  XI
-  XII
-}
 model MataPelajaran {
   id String @id @default(cuid())
   tingkat Tingkat
@@ -146,8 +145,26 @@ model Ujian{
   token String? @unique
   waktuPengerjaan Int
   hasil Hasil[]
+  kecurangan Kecurangan[]
   status Status @default(pending)
   @@map("ujian")
+}
+
+enum TypeKecurangan {
+  blurred
+  tabHidden
+  floatingWindow
+  splitScreen
+}
+model Kecurangan {
+  id String @id @default(cuid())
+  ujianId String
+  ujian Ujian @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+  siswaDetailId String?
+  siswaDetail SiswaDetail? @relation(fields: [siswaDetailId], references: [id], onDelete: Cascade)
+  type TypeKecurangan
+
+  @@map("kecurangan")
 }
 
 model Hasil {
@@ -160,8 +177,13 @@ model Hasil {
   salah String
   siswaDetail SiswaDetail @relation(fields: [siswaDetailId], references: [id])
   ujian Ujian @relation(fields: [ujianId], references: [id])
+
+  @@unique([siswaDetailId, ujianId]) // Hasil ujian unik untuk setiap siswa per ujian
   @@map("hasil")
 }
+
+
+
 
  
 model VerificationToken {

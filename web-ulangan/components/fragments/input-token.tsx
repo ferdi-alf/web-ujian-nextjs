@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 const InputToken = () => {
   const [state, formAction] = useActionState(toUjian, null);
   const router = useRouter();
-  console.log("wkwkwk", state);
 
   useEffect(() => {
     if (state?.error) {

@@ -46,8 +46,6 @@ const UjianDetail = async ({ params }: UjianDetailProps) => {
     },
   });
 
-  console.log("data", ujian);
-
   if (!ujian) {
     notFound();
   }

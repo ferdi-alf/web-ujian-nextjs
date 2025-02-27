@@ -79,3 +79,42 @@ export async function PUT(
     );
   }
 }
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const ujianId = params.id;
+
+    const ujian = await prisma.ujian.findUnique({
+      where: {
+        id: ujianId,
+      },
+      include: {
+        mataPelajaran: true,
+      },
+    });
+
+    if (!ujian) {
+      return NextResponse.json(
+        { error: "Ujian tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      id: ujian.id,
+      mataPelajaran: {
+        tingkat: ujian.mataPelajaran.tingkat,
+        pelajaran: ujian.mataPelajaran.pelajaran,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching ujian:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}

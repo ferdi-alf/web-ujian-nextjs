@@ -1,5 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { handleSignOut } from "@/lib/signOutAction";
+import { error } from "console";
 import { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 
@@ -11,11 +13,71 @@ interface CheatingDetectionResult {
   allClear: boolean;
 }
 
-const useCheatingDetection = (): CheatingDetectionResult => {
+interface CheatingDetectionProps {
+  ujianId: string;
+  siswaDetailId: string;
+}
+
+const useCheatingDetection = ({
+  ujianId,
+  siswaDetailId,
+}: CheatingDetectionProps): CheatingDetectionResult => {
   const [isTabHidden, setIsTabHidden] = useState<boolean>(false);
   const [isBlurred, setIsBlurred] = useState<boolean>(false);
   const [isSplitScreen, setIsSplitScreen] = useState<boolean>(false);
   const [isFloatingWindow, setIsFloatingWindow] = useState<boolean>(false);
+
+  const socketRef = useRef<WebSocket | null>(null);
+  const reportedCheatingRef = useRef<Set<string>>(new Set());
+  const reportCheating = (type: string): void => {
+    if (type === "splitScreen" && reportedCheatingRef.current.has(type)) {
+      return;
+    }
+
+    reportedCheatingRef.current.add(type);
+
+    let backendType: string;
+    switch (type) {
+      case "tabHidden":
+        backendType = "TAB_HIDDEN";
+        break;
+      case "blurred":
+        backendType = "BLURRED";
+        break;
+      case "splitScreen":
+        backendType = "SPLIT_SCREEN";
+        break;
+      case "floatingWindow":
+        backendType = "FLOATING_WINDOW";
+        break;
+      default:
+        backendType = type.toUpperCase();
+    }
+
+    const cheatingEvent = {
+      ujianId,
+      siswaDetailId,
+      type: backendType,
+      timestamp: Date.now(),
+    };
+
+    if (type !== "logout" && type !== "logoutWarning") {
+      if (
+        socketRef.current &&
+        socketRef.current.readyState === WebSocket.OPEN
+      ) {
+        socketRef.current.send(JSON.stringify(cheatingEvent));
+      } else {
+        fetch("http://localhost:8050/api/kecurangan", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(cheatingEvent),
+        }).catch((error) => console.error("Error reporting cheating:", error));
+      }
+    }
+  };
 
   const lastScreenSize = useRef<{ width: number; height: number }>({
     width: window.innerWidth,
@@ -41,7 +103,6 @@ const useCheatingDetection = (): CheatingDetectionResult => {
   // Fungsi anti-bounce untuk alert
   const showAlert = (message: string, type: string): void => {
     const now = Date.now();
-    // Hanya tampilkan alert jika sudah lebih dari 2 detik sejak alert terakhir dengan tipe yang sama
     if (now - (lastAlertTimeRef.current[type] || 0) > 2000) {
       Swal.fire({
         icon: "warning",
@@ -49,8 +110,35 @@ const useCheatingDetection = (): CheatingDetectionResult => {
         title: "Peringatan!",
       });
       lastAlertTimeRef.current[type] = now;
+
+      reportCheating(type);
     }
   };
+
+  useEffect(() => {
+    const socket = new WebSocket(
+      `ws://${window.location.host}/ws/siswa?ujianId=${ujianId}&siswaDetailId=${siswaDetailId}`
+    );
+
+    socket.onopen = () => {
+      console.log("WebSocket connected");
+      socketRef.current = socket;
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket disconnected");
+      socketRef.current = null;
+    };
+
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      socketRef.current = null;
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [ujianId, siswaDetailId]);
 
   // Fungsi untuk logout otomatis
   const autoLogout = async (): Promise<void> => {
