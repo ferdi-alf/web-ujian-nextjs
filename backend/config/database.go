@@ -1,12 +1,14 @@
 package config
 
 import (
+	"backend/models"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	_ "github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 func InitDB() *sql.DB {
@@ -48,4 +50,14 @@ func InitDB() *sql.DB {
 
     log.Println("Successfully connected to database")
     return db
+}
+
+func MigrateJawabanSiswa(db *gorm.DB) error {
+	// Buat tabel untuk menyimpan jawaban siswa
+	err := db.AutoMigrate(
+		&models.JawabanSiswa{},
+		&models.HasilDetail{},
+	)
+	
+	return err
 }

@@ -45,7 +45,11 @@ func main() {
         return c.JSON(fiber.Map{"message": "API bekerja!"})
     })
     app.Post("/api/soal", soalHandler.AddSoal)
-   app.Post("/api/kecurangan", cheatingHandler.ReportCheating)
+    app.Post("/api/kecurangan", cheatingHandler.ReportCheating)
+   // Add to your existing routes in main.go
+    ujianHandler := handlers.NewUjianHandler(db)
+    app.Post("/api/ujian/submit", ujianHandler.SubmitUjian)
+    app.Get("/api/hasil/:id", ujianHandler.GetHasilDetail)
     handlers.SetupWebSocket(app, db)
 
 

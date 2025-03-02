@@ -48,3 +48,59 @@ type CheatingEvent struct {
 	Type          TypeKecurangan `json:"type"`
 	Timestamp     int64          `json:"timestamp"`
 }
+
+type JawabanSiswa struct {
+	ID            string `json:"id"`
+	SiswaDetailID string `json:"siswaDetailId"`
+	SoalID        string `json:"soalId"`
+	JawabanID     string `json:"jawabanId"`
+	UjianID       string `json:"ujianId"`
+	CreatedAt     int64  `json:"createdAt"`
+}
+
+// SubmitUjianRequest struktur untuk menerima data dari client
+type SubmitUjianRequest struct {
+	UjianID         string            `json:"ujianId"`
+	SiswaDetailID   string            `json:"siswaDetailId"`
+	Answers         map[string]string `json:"answers"` // key: soalId, value: jawabanId
+	WaktuPengerjaan int               `json:"waktuPengerjaan"`
+}
+
+// SubmitUjianResponse struktur untuk respons ke client
+type SubmitUjianResponse struct {
+	Success         bool   `json:"success"`
+	Message         string `json:"message"`
+	HasilID         string `json:"hasilId"`
+	Nilai           int    `json:"nilai"`
+	Benar           int    `json:"benar"`
+	Salah           int    `json:"salah"`
+	TotalKecurangan int    `json:"totalKecurangan"`
+	WaktuPengerjaan int    `json:"waktuPengerjaan"`
+}
+
+// CheatingCount menyimpan jumlah kecurangan berdasarkan tipe
+type CheatingCount struct {
+	Type  TypeKecurangan `json:"type"`
+	Count int            `json:"count"`
+}
+
+// CheatingDetail menyimpan detail kecurangan untuk response
+type CheatingDetail struct {
+	TotalCount int             `json:"totalCount"`
+	ByType     []CheatingCount `json:"byType"`
+}
+
+type HasilDetail struct {
+	ID              string         `json:"id"`
+	SiswaDetailID   string         `json:"siswaDetailId"`
+	UjianID         string         `json:"ujianId"`
+	WaktuPengerjaan int            `json:"waktuPengerjaan"`
+	Nilai           int            `json:"nilai"`
+	Benar           int            `json:"benar"`
+	Salah           int            `json:"salah"`
+	TotalKecurangan int            `json:"totalKecurangan"`
+	Kecurangan      CheatingDetail `json:"kecurangan"`
+	CreatedAt       int64          `json:"createdAt"`
+	MataPelajaran   string         `json:"mataPelajaran"`
+	Tingkat         string         `json:"tingkat"` // Tambahkan tingkat
+}
