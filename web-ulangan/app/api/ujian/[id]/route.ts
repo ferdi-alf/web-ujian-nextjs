@@ -1,11 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateUjianSchema } from "@/lib/zod";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: any) {
   try {
     const authHeader = request.headers.get("Authorization");
     const token = authHeader?.startsWith("Bearer ")
@@ -36,10 +34,9 @@ export async function PUT(
     }
 
     const { status, waktuPengerjaan, token: examToken } = validateFields.data;
-    const id = params.id;
 
     const existingUjian = await prisma.ujian.findUnique({
-      where: { id: id },
+      where: { id: params.id },
       include: {
         mataPelajaran: true,
       },
@@ -53,7 +50,7 @@ export async function PUT(
     }
     const updateUjian = await prisma.ujian.update({
       where: {
-        id: id,
+        id: params.id,
       },
       data: {
         waktuPengerjaan: parseInt(waktuPengerjaan),
@@ -80,10 +77,7 @@ export async function PUT(
   }
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, { params }: any) {
   try {
     const ujianId = params.id;
 

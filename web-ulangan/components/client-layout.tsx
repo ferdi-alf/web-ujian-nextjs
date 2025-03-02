@@ -1,6 +1,5 @@
 // app/dashboard/layout.tsx
 import { Geist, Geist_Mono } from "next/font/google";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Sidebar from "@/components/sidebar";
 import NavbarDashboard from "@/components/navbar-dashboard";
@@ -31,17 +30,6 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} antialiased relative overflow-x-hidden bg-white`}
     >
       <SidebarProvider>
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="colored"
-        />
         <div className="flex">
           <div className="relative w-auto">
             <Sidebar />

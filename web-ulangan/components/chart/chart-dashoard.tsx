@@ -22,7 +22,8 @@ import { useCheating } from "../CheatingContext";
 
 // Type for chart data
 interface ChartDataItem {
-  kelas: string;
+  tingkat: string;
+  jurusan: string;
   count: number;
 }
 
@@ -54,15 +55,16 @@ export function ChartDashboard() {
     error,
     isLoading,
   } = useSWR("cheatingStats", fetchCheatingStats);
+  console.log(chartData);
 
   // Use the newCheatingEvent from context just to track when new events occur
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { newCheatingEvent } = useCheating();
-
+  // const kelas = chartData.tingkat
   // Prepare data for the chart
   const preparedChartData = chartData
     ? chartData.map((item: ChartDataItem) => ({
-        kelas: item.kelas,
+        kelas: `${item.tingkat} ${item.jurusan}`,
         count: item.count,
       }))
     : [];

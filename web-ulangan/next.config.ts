@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
     serverActions: {
-      bodySizeLimit: "50mb", // Batas ukuran request body
+      bodySizeLimit: "50mb",
     },
   },
 };

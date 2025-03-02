@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
@@ -6,12 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { promises as fs } from "fs";
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: any) {
   try {
-    const soalId = await params.id;
+    const id = params.id;
+
     const session = await auth();
     const isNotRole = !(
       session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN"
@@ -20,25 +19,26 @@ export async function DELETE(
     const sessionToken = cookieStore.get("authjs.session-token")?.value;
 
     if (!sessionToken) {
-      return Response.json(
+      return NextResponse.json(
         { error: true, message: "No session token found", status: 401 },
         { status: 401 }
       );
     }
 
     if (!session || isNotRole) {
-      return Response.json(
+      return NextResponse.json(
         { error: true, message: "Unauthorized", status: 401 },
         { status: 401 }
       );
     }
 
     const mataPelajaran = await prisma.mataPelajaran.findUnique({
-      where: { id: soalId },
+      where: { id },
       include: {
         soal: true,
       },
     });
+
     if (!mataPelajaran) {
       return NextResponse.json(
         {
@@ -67,7 +67,7 @@ export async function DELETE(
 
     await prisma.mataPelajaran.delete({
       where: {
-        id: soalId,
+        id,
       },
     });
 

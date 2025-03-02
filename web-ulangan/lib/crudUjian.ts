@@ -1,15 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { auth } from "@/auth";
 import {
   AddUjian,
+  submitUjianSchema,
   tokenSchema,
-  ujianSchema,
   updateUjianSchema,
 } from "@/lib/zod";
 import { redirect } from "next/navigation";
 import { prisma } from "./prisma";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export const addUjian = async (prevState: unknown, formData: FormData) => {
   try {
@@ -233,56 +236,86 @@ export const toUjian = async (prevState: unknown, formdata: FormData) => {
   }
 };
 
-export async function submitUjian(prevState: unknown, formData: FormData) {
+export async function submitUjian(
+  prevState: unknown,
+  formData: FormData,
+  submitData?: any
+) {
   try {
-    // Ambil data dari FormData
-    const ujianId = formData.get("ujianId") as string;
-    const siswaDetailId = formData.get("siswaDetailId") as string;
-    const waktuPengerjaan = formData.get("waktuPengerjaan") as string;
+    let ujianId,
+      siswaDetailId,
+      waktuMulai,
+      waktuSelesai,
+      selectedAnswers,
+      waktuPengerjaan;
 
-    // Ambil jawaban siswa
-    const jawabanEntries = Array.from(formData.entries()).filter(([key]) =>
-      key.startsWith("soal-")
-    );
+    if (submitData) {
+      ujianId = submitData.ujianId;
+      siswaDetailId = submitData.siswaDetailId;
+      selectedAnswers = submitData.selectedAnswers;
+      waktuMulai = submitData.waktuMulai;
+      waktuSelesai = submitData.waktuSelesai;
+      waktuPengerjaan = submitData.waktuPengerjaan;
+    } else {
+      ujianId = formData.get("ujianId") as string;
+      siswaDetailId = formData.get("siswaDetailId") as string;
+      waktuMulai = formData.get("waktuMulai") as string;
+      waktuSelesai = formData.get("waktuSelesai") as string;
 
-    const jawaban = jawabanEntries.map(([key, value]) => ({
-      soalId: key.replace("soal-", ""), // Ambil ID soal dari name="soal-123"
-      jawabanId: value as string, // ID jawaban yang dipilih
-    }));
+      const selectedAnswersString = formData.get("selectedAnswers") as string;
+      selectedAnswers = selectedAnswersString
+        ? JSON.parse(selectedAnswersString)
+        : null;
 
-    // Validasi dengan Zod
-    const result = ujianSchema.safeParse({
+      waktuPengerjaan = Math.floor(
+        (parseInt(waktuSelesai) - parseInt(waktuMulai)) / 1000
+      );
+    }
+
+    if (!selectedAnswers || Object.keys(selectedAnswers).length === 0) {
+      return { success: false, message: "Tidak ada jawaban yang dipilih" };
+    }
+
+    const validateFields = submitUjianSchema.parse({ ujianId, siswaDetailId });
+
+    const requestData = {
       ujianId,
       siswaDetailId,
+      answers: selectedAnswers,
       waktuPengerjaan,
-      jawaban,
+    };
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL_GOLANG;
+    const response = await fetch(`${API_URL}/api/ujian/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestData),
     });
 
-    console.log("hasil", result);
-
-    if (!result.success) {
-      return { error: result.error.format() };
-    }
-
-    // Kirim data ke API backend Golang Fiber
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/ujian/submit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(result.data),
-      }
-    );
-
     if (!response.ok) {
-      throw new Error("Gagal menyimpan jawaban ke backend");
+      const errorData = await response.json();
+      return {
+        success: false,
+        message: errorData.message || "Gagal mengirim jawaban",
+      };
     }
 
-    return { success: "Jawaban berhasil dikirim ke server" };
+    const data = await response.json();
+    revalidatePath("/ujian");
+
+    return { success: true, hasilId: data.hasilId }; // Return hasilId agar bisa digunakan di client
   } catch (error) {
-    console.error(error);
-    return { error: "Terjadi kesalahan saat mengirim jawaban" };
+    console.error("Error submitting exam:", error);
+    if (error instanceof z.ZodError) {
+      return {
+        success: false,
+        message: "Validasi gagal",
+        errors: error.errors,
+      };
+    }
+    return {
+      success: false,
+      message: "Terjadi kesalahan saat mengirim jawaban",
+    };
   }
 }

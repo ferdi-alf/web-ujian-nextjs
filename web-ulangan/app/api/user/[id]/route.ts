@@ -6,10 +6,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: any) {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("next-auth.session-token")?.value;

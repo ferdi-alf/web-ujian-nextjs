@@ -1,9 +1,10 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/[tingkat]/[nama-ujian]/UjianClient.tsx - Client Component
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import {
   Pagination,
@@ -14,12 +15,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { auth } from "@/auth";
-import { useSession } from "next-auth/react";
-import { prisma } from "@/lib/prisma";
+
 import { submitUjian } from "@/lib/crudUjian";
 import { showErrorToast } from "./toast/ToastSuccess";
 import useCheatingDetection from "./useCheatingDetection";
+import { useRouter } from "next/navigation";
 
 interface JawabanType {
   id: string;
@@ -44,12 +44,17 @@ interface UjianClientProps {
 
 const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
   const [state, formAction] = useActionState(submitUjian, null);
+  const totalDetikAwal = ujian.waktuPengerjaan * 60; // Konversi menit ke detik
+  const [sisaWaktu, setSisaWaktu] = useState(totalDetikAwal);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [currentSoalIndex, setCurrentSoalIndex] = useState(0);
+  const router = useRouter();
+
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, string>
   >({});
   const totalSoal = soalData.length;
+  console.log("ujian:", ujian);
 
   // ini dia inti dari fitur ahahaha🔥🔥🔥
   const { isTabHidden, isBlurred, isSplitScreen, isFloatingWindow, allClear } =
@@ -65,7 +70,15 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     timestamps: [],
   });
 
-  // Efek untuk melacak pelanggaran
+  useEffect(() => {
+    if (state?.success && state.hasilId) {
+      localStorage.removeItem("waktuMulaiUjian");
+      router.push(
+        `/ujian/${ujian.mataPelajaran.tingkat}/${ujian.mataPelajaran.pelajaran}/hasil?hasil=${state.hasilId}`
+      );
+    }
+  }, [state?.success, state?.hasilId, router]);
+
   useEffect(() => {
     let violationType: string | null = null;
 
@@ -83,10 +96,38 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     }
   }, [isTabHidden, isBlurred, isSplitScreen, isFloatingWindow]);
 
-  // Setel waktu mulai saat komponen dimount
   useEffect(() => {
     setStartTime(Date.now());
   }, []);
+
+  useEffect(() => {
+    // Cek apakah ada waktu mulai di localStorage
+    const waktuMulai = localStorage.getItem("waktuMulaiUjian");
+
+    if (waktuMulai) {
+      const selisihDetik = Math.floor(
+        (Date.now() - parseInt(waktuMulai)) / 1000
+      );
+      const waktuTersisa = totalDetikAwal - selisihDetik;
+      setSisaWaktu(waktuTersisa > 0 ? waktuTersisa : 0);
+    } else {
+      // Simpan waktu mulai baru jika belum ada
+      localStorage.setItem("waktuMulaiUjian", Date.now().toString());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sisaWaktu <= 0) return; // Hentikan jika sudah 0 detik
+
+    const timer = setInterval(() => {
+      setSisaWaktu((prevWaktu) => prevWaktu - 1);
+    }, 1000);
+
+    return () => clearInterval(timer); // Cleanup saat unmount
+  }, [sisaWaktu]);
+
+  const menit = Math.floor(sisaWaktu / 60);
+  const detik = sisaWaktu % 60;
 
   const progressPercentage = ((currentSoalIndex + 1) / totalSoal) * 100;
 
@@ -226,23 +267,47 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
       return; // Jangan lanjutkan submit
     }
 
-    // Jika semua soal sudah dijawab, kirimkan form
-    formAction(formData);
-  };
+    console.log("Final answers before submit:", selectedAnswers);
 
+    const waktuMulai = localStorage.getItem("waktuMulaiUjian");
+    const waktuSelesai = Date.now();
+
+    // Buat FormData baru
+    const newFormData = new FormData();
+    newFormData.append("ujianId", formData.get("ujianId") as string);
+    newFormData.append(
+      "siswaDetailId",
+      formData.get("siswaDetailId") as string
+    );
+    newFormData.append("waktuMulai", waktuMulai || "0");
+    newFormData.append("waktuSelesai", waktuSelesai.toString());
+
+    // Tambahkan selectedAnswers sebagai JSON string
+    newFormData.append("selectedAnswers", JSON.stringify(selectedAnswers));
+
+    // Panggil formAction dengan FormData yang sudah lengkap
+    formAction(newFormData);
+  };
   return (
-    <div className="flex flex-col gap-y-4 items-center justify-center min-h-screen p-4">
+    <div className="flex flex-col   gap-y-4 items-center justify-center min-h-screen p-4">
       <form
         action={async (formData) => handleFormSubmit(formData)}
         className="flex flex-col gap-y-3 w-full max-w-lg"
       >
         <input type="hidden" name="ujianId" value={ujian.id} />
         <input type="hidden" name="siswaDetailId" value={siswaId} />
+        <div className="absolute left-0 top-24  font-medium p-3 rounded-tr-xl rounded-br-xl bg-white shadow-lg">
+          <div className="ml-3">{`${menit}:${detik
+            .toString()
+            .padStart(2, "0")}`}</div>
+        </div>
+
         <input
           type="hidden"
-          name="waktuPengerjaan"
-          value={((Date.now() - (startTime ?? Date.now())) / 1000).toFixed(0)}
+          name="selectedAnswers"
+          value={JSON.stringify(selectedAnswers)}
         />
+
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div
             className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-cyan-300 h-2.5 rounded-full"
@@ -280,6 +345,7 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
                         type="radio"
                         id={jawaban.id}
                         name={`soal-${currentSoal.id}`}
+                        value={jawaban.id} // Add this line
                         checked={selectedAnswers[currentSoal.id] === jawaban.id}
                         onChange={() => handleAnswerSelect(jawaban.id)}
                         className="mt-1"
@@ -335,16 +401,14 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
           </Pagination>
         </div>
 
-        <button
-          type="submit"
-          className={`w-full ${
-            currentSoalIndex === totalSoal - 1
-              ? ""
-              : "opacity-15 cursor-not-allowed"
-          } text-white bg-gradient-to-r mt-6 shadow-md from-cyan-500 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-cyan-300 dark:focus:ring-cyan-800 font-medium rounded-lg text-sm px-6 py-2.5 text-center `}
-        >
-          Submit
-        </button>
+        {currentSoalIndex === totalSoal - 1 && (
+          <button
+            type="submit"
+            className="w-full text-white bg-gradient-to-r mt-6 shadow-md from-cyan-500 to-blue-500 hover:bg-gradient-to-bl"
+          >
+            Kirim Jawaban
+          </button>
+        )}
       </form>
     </div>
   );

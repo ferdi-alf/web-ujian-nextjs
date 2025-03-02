@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,37 +7,174 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String  @map("user_id")
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
- 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
- 
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@map("sessions")
 }
 
+model User {
+  id          String       @id @default(cuid())
+  username    String?      @unique
+  image       String?
+  role        Role         @default(SISWA)
+  password    String?
+  kelasId     String?
+  accounts    Account[]
+  sessions    Session[]
+  siswaDetail SiswaDetail?
+  kelas       Kelas?       @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+
+  @@map("users")
+}
+
+model Kelas {
+  id          String        @id @default(cuid())
+  tingkat     Tingkat
+  jurusan     String?
+  siswaDetail SiswaDetail[]
+  users       User[]
+
+  @@map("kelas")
+}
+
+model SiswaDetail {
+  id          String       @id @default(cuid())
+  userId      String       @unique
+  name        String
+  kelasId     String
+  status      String       @default("AKTIF")
+  kelamin     Kelamin
+  nis         String
+  nomor_ujian String
+  ruang       String
+  hasil       Hasil[]
+  kecurangan  Kecurangan[]
+  kelas       Kelas        @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  JawabanSiswa JawabanSiswa[]
+
+  @@map("siswa_detail")
+}
+
+
+
+model MataPelajaran {
+  id        String  @id @default(cuid())
+  tingkat   Tingkat
+  pelajaran String
+  soal      Soal[]
+  ujian     Ujian[]
+
+  @@map("mata_pelajaran")
+}
+
+model Soal {
+  id              String        @id @default(cuid())
+  gambar          String?
+  soal            String
+  mataPelajaranId String
+  Jawaban         Jawaban[]
+  mataPelajaran   MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
+
+  @@map("soal")
+}
+
+model Jawaban {
+  id      String  @id @default(cuid())
+  soalId  String
+  jawaban String
+  benar   Boolean
+  soal    Soal    @relation(fields: [soalId], references: [id], onDelete: Cascade)
+
+  @@map("jawaban")
+}
+
+model Ujian {
+  id              String        @id @default(cuid())
+  mataPelajaranId String
+  token           String?       @unique
+  waktuPengerjaan Int
+  status          Status        @default(pending)
+  hasil           Hasil[]
+  kecurangan      Kecurangan[]
+  mataPelajaran   MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
+  JawabanSiswa JawabanSiswa[]
+
+  @@map("ujian")
+}
+
+model Kecurangan {
+  id            String         @id @default(cuid())
+  ujianId       String
+  siswaDetailId String?
+  type          TypeKecurangan
+  siswaDetail   SiswaDetail?   @relation(fields: [siswaDetailId], references: [id], onDelete: Cascade)
+  ujian         Ujian          @relation(fields: [ujianId], references: [id], onDelete: Cascade)
+
+  @@map("kecurangan")
+}
+
+model Hasil {
+  id              String      @id @default(cuid())
+  siswaDetailId   String
+  ujianId         String
+  waktuPengerjaan String
+  nilai           String
+  benar           String
+  salah           String
+  createdAt       DateTime    @default(now())
+  siswaDetail     SiswaDetail @relation(fields: [siswaDetailId], references: [id])
+  ujian           Ujian       @relation(fields: [ujianId], references: [id])
+
+  @@unique([siswaDetailId, ujianId])
+  @@map("hasil")
+}
+
+model JawabanSiswa {
+  id            String      @id @default(cuid())
+  siswaDetailId String
+  ujianId       String
+  soalId        String
+  jawabanId     String
+  createdAt     DateTime    @default(now())
+  siswaDetail   SiswaDetail @relation(fields: [siswaDetailId], references: [id])
+  ujian         Ujian       @relation(fields: [ujianId], references: [id])
+
+  @@map("jawaban_siswa")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
 
 enum Role {
   SISWA
@@ -56,80 +187,11 @@ enum Kelamin {
   L
   P
 }
+
 enum Tingkat {
   X
   XI
   XII
-}
-model Kelas {
-  id String @id @default(cuid())
-  tingkat Tingkat
-  jurusan String?
-  users User[]
-  siswaDetail SiswaDetail[]
-
-  @@map("kelas")
-}
-model SiswaDetail {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  name        String
-  kelasId     String
-  nis         String
-  kelamin     Kelamin
-  nomor_ujian String
-  ruang       String
-  status      String   @default("AKTIF")
-  hasil Hasil[]
-  kecurangan Kecurangan[]
-  kelas Kelas @relation(fields: [kelasId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  @@map("siswa_detail")
-}
-model User {
-  id       String  @id @default(cuid())
-  username String? @unique
-  image    String?
-  role     Role    @default(SISWA)
-  kelasId  String?  // Buat nullable
-  password String?
-  accounts Account[]
-  sessions Session[]
-  siswaDetail SiswaDetail?
-  
-  kelas Kelas? @relation(fields: [kelasId], references: [id], onDelete: Cascade) 
-
-  @@map("users")
-}
-
-
-
-model MataPelajaran {
-  id String @id @default(cuid())
-  tingkat Tingkat
-  pelajaran String
-  soal Soal[]
-  ujian Ujian[]
-  @@map("mata_pelajaran")
-}
-
-model Soal{
-  id String @id @default(cuid())
-  gambar String?
-  soal String
-  mataPelajaranId String
-  mataPelajaran MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
-  Jawaban Jawaban[]
-  @@map("soal")
-}
-
-model Jawaban {
-  id String @id @default(cuid())
-  soalId String
-  jawaban String
-  benar Boolean
-  soal Soal @relation(fields: [soalId], references: [id], onDelete: Cascade)
-  @@map("jawaban")
 }
 
 enum Status {
@@ -138,59 +200,9 @@ enum Status {
   selesai
 }
 
-model Ujian{
-  id String @id @default(cuid())
-  mataPelajaranId String
-  mataPelajaran MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
-  token String? @unique
-  waktuPengerjaan Int
-  hasil Hasil[]
-  kecurangan Kecurangan[]
-  status Status @default(pending)
-  @@map("ujian")
-}
-
 enum TypeKecurangan {
   blurred
   tabHidden
   floatingWindow
   splitScreen
-}
-model Kecurangan {
-  id String @id @default(cuid())
-  ujianId String
-  ujian Ujian @relation(fields: [ujianId], references: [id], onDelete: Cascade)
-  siswaDetailId String?
-  siswaDetail SiswaDetail? @relation(fields: [siswaDetailId], references: [id], onDelete: Cascade)
-  type TypeKecurangan
-
-  @@map("kecurangan")
-}
-
-model Hasil {
-  id String @id @default(cuid())
-  siswaDetailId String
-  ujianId String
-  waktuPengerjaan String
-  nilai String
-  benar String
-  salah String
-  siswaDetail SiswaDetail @relation(fields: [siswaDetailId], references: [id])
-  ujian Ujian @relation(fields: [ujianId], references: [id])
-
-  @@unique([siswaDetailId, ujianId]) // Hasil ujian unik untuk setiap siswa per ujian
-  @@map("hasil")
-}
-
-
-
-
- 
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
- 
-  @@unique([identifier, token])
-  @@map("verification_tokens")
 }

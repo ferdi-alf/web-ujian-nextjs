@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+export const dynamic = "auto";
 import { auth } from "@/auth";
 import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
 import { FlipText } from "@/components/magicui/flip-text";
-import { InteractiveHoverButton } from "@/components/magicui/interactive-hover-button";
 import { ShineBorder } from "@/components/magicui/shine-border";
 import MulaiButton from "@/components/mulaiButton";
 import { prisma } from "@/lib/prisma";
@@ -12,14 +11,13 @@ import { ArrowRightIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Swal from "sweetalert2";
+import React from "react";
 
-interface UjianDetailProps {
-  params: { tingkat: string; "nama-ujian": string };
-}
+type Params = Promise<{ tingkat: string; namaUjian: string }>;
 
-const UjianDetail = async ({ params }: UjianDetailProps) => {
+const UjianDetail = async (params: { params: Params }) => {
   const session = await auth();
+  const { tingkat, namaUjian } = await params.params;
 
   const siswaDetail = session?.user?.id
     ? await prisma.siswaDetail.findUnique({
@@ -36,8 +34,8 @@ const UjianDetail = async ({ params }: UjianDetailProps) => {
   const ujian = await prisma.ujian.findFirst({
     where: {
       mataPelajaran: {
-        tingkat: params.tingkat as Tingkat,
-        pelajaran: params["nama-ujian"],
+        tingkat: tingkat as Tingkat,
+        pelajaran: namaUjian,
       },
     },
 
@@ -125,7 +123,7 @@ const UjianDetail = async ({ params }: UjianDetailProps) => {
             </div>
           </div>
         </ShineBorder>
-        <MulaiButton tingkat={params.tingkat} ujian={params["nama-ujian"]} />
+        <MulaiButton tingkat={tingkat} ujian={namaUjian} />
       </div>
     </div>
   );

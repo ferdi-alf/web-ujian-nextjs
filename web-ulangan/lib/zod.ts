@@ -282,18 +282,11 @@ export const tokenSchema = z.object({
   token: z.string().min(1, { message: "token tidak boleh kosong" }),
 });
 
-export const ujianSchema = z.object({
-  ujianId: z.string().min(1, "ID ujian harus ada"),
-  siswaDetailId: z.string().min(1, "ID siswa harus ada"),
-  waktuPengerjaan: z.string().refine((val) => !isNaN(Number(val)), {
-    message: "Waktu pengerjaan harus berupa angka",
-  }),
-  jawaban: z
-    .array(
-      z.object({
-        soalId: z.string().min(1, "ID soal harus ada"),
-        jawabanId: z.string().min(1, "ID jawaban harus ada"),
-      })
-    )
-    .min(1, "Minimal harus ada satu jawaban"),
+export const submitUjianSchema = z.object({
+  ujianId: z.string().min(1, "ID ujian tidak boleh kosong"),
+  siswaDetailId: z.string().min(1, "ID siswa tidak boleh kosong"),
+  // This will be a dynamic property for each question
+  // We'll validate it separately in the action function
 });
+
+export type SubmitUjianInput = z.infer<typeof submitUjianSchema>;

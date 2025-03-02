@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { writeFile } from "fs/promises";
 import path from "path";
 import { hash } from "bcrypt-ts";
@@ -7,10 +8,7 @@ import { cookies } from "next/headers";
 import { UpdateSiswaSchema } from "@/lib/zod";
 import { revalidatePath } from "next/cache";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id?: string } }
-) {
+export async function PUT(request: NextRequest, { params }: any) {
   try {
     // Pastikan params sudah benar sebelum digunakan
     const id = params?.id;
@@ -137,10 +135,7 @@ export async function PUT(
   }
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, { params }: any) {
   try {
     const siswaId = params.id;
 

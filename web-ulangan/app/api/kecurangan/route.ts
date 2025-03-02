@@ -1,39 +1,86 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const stats = await prisma.kecurangan.groupBy({
-      by: ["siswaDetailId"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        _count: {
-          id: "desc",
+    const stats = await prisma.kecurangan.findMany({
+      include: {
+        siswaDetail: {
+          include: {
+            kelas: true,
+          },
         },
+        ujian: true,
       },
     });
 
-    const formattedStats = await Promise.all(
-      stats.map(async (stat) => {
-        if (!stat.siswaDetailId) return null;
+    const validData = stats.filter((item) => item.siswaDetail !== null);
 
-        const siswa = await prisma.siswaDetail.findUnique({
-          where: { id: stat.siswaDetailId },
-          include: { kelas: true },
+    const groupedData = validData.reduce(
+      (
+        acc: {
+          [key: string]: {
+            tingkat: string;
+            jurusan: string;
+            count: number;
+            types: { [key: string]: number };
+            details: any[];
+          };
+        },
+        curr: {
+          siswaDetail: {
+            kelas: {
+              tingkat: string;
+              jurusan: string | null;
+            };
+            name: string;
+          } | null;
+          type: string;
+          id: string;
+          ujianId: string;
+          siswaDetailId: string | null;
+        }
+      ) => {
+        const tingkat = curr.siswaDetail?.kelas.tingkat || "UNKNOWN";
+        const jurusan = curr.siswaDetail?.kelas.jurusan || "UNKNOWN";
+        const key = `${tingkat}-${jurusan}`;
+
+        if (!acc[key]) {
+          acc[key] = {
+            tingkat,
+            jurusan,
+            count: 0,
+            types: {},
+            details: [],
+          };
+        }
+
+        acc[key].count++;
+
+        const type = curr.type;
+        if (!acc[key].types[type]) {
+          acc[key].types[type] = 0;
+        }
+        acc[key].types[type]++;
+
+        // Tambahkan detail untuk analisis lebih lanjut jika diperlukan
+        acc[key].details.push({
+          id: curr.id,
+          type: curr.type,
+          ujianId: curr.ujianId,
+          siswaId: curr.siswaDetailId,
+          siswaName: curr.siswaDetail?.name,
         });
 
-        return {
-          kelas: `${siswa?.kelas.tingkat} ${siswa?.kelas.jurusan}`,
-          count: stat._count.id,
-        };
-      })
+        return acc;
+      },
+      {} as Record<string, any>
     );
 
-    const filteredStats = formattedStats.filter(Boolean);
+    const result = Object.values(groupedData);
 
-    return NextResponse.json(filteredStats);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching cheating stats:", error);
     return NextResponse.json(

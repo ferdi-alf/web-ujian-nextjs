@@ -140,7 +140,6 @@ const useCheatingDetection = ({
     };
   }, [ujianId, siswaDetailId]);
 
-  // Fungsi untuk logout otomatis
   const autoLogout = async (): Promise<void> => {
     showAlert(
       "Anda telah keluar secara otomatis karena terdeteksi melakukan kecurangan!",
@@ -150,7 +149,6 @@ const useCheatingDetection = ({
     await handleSignOut();
   };
 
-  // Deteksi apakah perangkat adalah mobile
   const isMobileDevice = (): boolean => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
@@ -216,7 +214,6 @@ const useCheatingDetection = ({
     }
   };
 
-  // Fungsi untuk memeriksa floating window
   const checkFloatingWindow = (): void => {
     // Untuk perangkat mobile, gunakan pendekatan khusus
     if (isMobileDevice()) {
@@ -248,7 +245,6 @@ const useCheatingDetection = ({
     }
   };
 
-  // Metode khusus untuk mendeteksi floating app di perangkat mobile
   const checkMobileFloatingApp = (): void => {
     // Deteksi perubahan fokus untuk aplikasi mobile
     const isFocused = document.hasFocus();
@@ -289,7 +285,6 @@ const useCheatingDetection = ({
     }
   };
 
-  // Deteksi Picture-in-Picture yang digunakan untuk floating video
   useEffect(() => {
     const handlePictureInPicture = () => {
       if (document.pictureInPictureElement) {
@@ -331,15 +326,17 @@ const useCheatingDetection = ({
 
   useEffect(() => {
     const handleVisibilityChange = (): void => {
-      if (document.hidden) {
-        setIsTabHidden(true);
-        showAlert(
-          "Peringatan! Anda terdeteksi keluar dari halaman ujian.",
-          "tabHidden"
-        );
-      } else {
-        setIsTabHidden(false);
-      }
+      setTimeout(() => {
+        if (document.hidden) {
+          setIsTabHidden(true);
+          showAlert(
+            "Peringatan! Anda terdeteksi keluar dari halaman ujian.",
+            "tabHidden"
+          );
+        } else {
+          setIsTabHidden(false);
+        }
+      }, 4000);
     };
 
     const handleBlur = (): void => {
@@ -351,7 +348,7 @@ const useCheatingDetection = ({
             "blurred"
           );
         }
-      }, 1000); // Delay agar lebih akurat
+      }, 3400); // Delay agar lebih akurat
     };
 
     const handleFocus = (): void => {

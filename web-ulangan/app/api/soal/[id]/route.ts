@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/prisma";
 import { updateSoalSchema } from "@/lib/zod";
 import { NextRequest, NextResponse } from "next/server";
@@ -8,12 +9,9 @@ import { existsSync } from "fs";
 import { auth } from "@/auth";
 import { cookies } from "next/headers";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: any) {
   try {
-    const { id: soalId } = await params;
+    const id = params.id;
     const session = await auth();
     const isNotRole = !(
       session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN"
@@ -36,7 +34,7 @@ export async function PUT(
     }
 
     const existingSoal = await prisma.soal.findUnique({
-      where: { id: soalId },
+      where: { id: id },
       include: {
         Jawaban: true,
       },
@@ -115,7 +113,7 @@ export async function PUT(
           { status: 400 }
         );
       }
-      const fileName = `soal_${soalId}_${Date.now()}.${fileExtension}`;
+      const fileName = `soal_${id}_${Date.now()}.${fileExtension}`;
       const filePath = path.join(
         process.cwd(),
         "public",
@@ -145,7 +143,7 @@ export async function PUT(
     const updatedSoal = await prisma.$transaction(async (tx) => {
       // Perbaikan: simpan hasil update ke variabel yang akan digunakan
       await tx.soal.update({
-        where: { id: soalId },
+        where: { id: id },
         data: {
           soal: updateData.soal,
           mataPelajaranId: updateData.mataPelajaranId,
@@ -154,7 +152,7 @@ export async function PUT(
       });
 
       await tx.jawaban.deleteMany({
-        where: { soalId },
+        where: { id },
       });
 
       for (const jawaban of updateData.Jawaban) {
@@ -162,13 +160,13 @@ export async function PUT(
           data: {
             jawaban: jawaban.jawaban,
             benar: jawaban.benar,
-            soalId,
+            soal: { connect: { id } },
           },
         });
       }
 
       return tx.soal.findUnique({
-        where: { id: soalId },
+        where: { id: id },
         include: {
           Jawaban: true,
           mataPelajaran: true,
@@ -198,12 +196,9 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: any) {
   try {
-    const soalId = await params.id;
+    const soalId = params.id;
     const session = await auth();
     const isNotRole = !(
       session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN"
