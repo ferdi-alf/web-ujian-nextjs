@@ -190,7 +190,7 @@ function PelajaranTable({
     const result = await Swal.fire({
       icon: "warning",
       title: "Apakah kamu yakin",
-      text: `Jika kamu menghapus ${mataPelajaran}, maka seluruh total ${total} data soal akan terhapus dari ${mataPelajaran}`,
+      text: `Jika kamu menghapus ${mataPelajaran}, maka seluruh total ${total} soal dan ujian yang sudah di tambahkan akan terhapus dari ${mataPelajaran}`,
       showCancelButton: true,
       confirmButtonText: "Ya, hapus!",
       cancelButtonText: "Cancel",

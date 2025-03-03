@@ -50,11 +50,14 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
   const [currentSoalIndex, setCurrentSoalIndex] = useState(0);
   const router = useRouter();
 
+  // State untuk soal yang sudah diacak
+  const [randomizedSoal, setRandomizedSoal] = useState<SoalType[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<string, string>
   >({});
-  const totalSoal = soalData.length;
-  console.log("ujian:", ujian);
+
+  // State untuk tracking soal asli ke soal teracak (untuk keperluan penilaian)
+  const [soalMapping, setSoalMapping] = useState<Record<string, string>>({});
 
   // ini dia inti dari fitur ahahaha🔥🔥🔥
   const { isTabHidden, isBlurred, isSplitScreen, isFloatingWindow, allClear } =
@@ -70,14 +73,96 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     timestamps: [],
   });
 
+  // Fungsi untuk mengacak array
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // Fungsi untuk membuat seed random berdasarkan ID siswa
+  const getRandomSeed = (id: string) => {
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash << 5) - hash + id.charCodeAt(i);
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+  };
+
+  // Mengacak soal saat komponen dimuat
+  useEffect(() => {
+    const siswaIdSeed = getRandomSeed(siswaId);
+
+    // Cek apakah ada data acakan tersimpan di localStorage
+    const savedRandomization = localStorage.getItem(
+      `randomizedSoal_${ujian.id}_${siswaId}`
+    );
+    const savedMapping = localStorage.getItem(
+      `soalMapping_${ujian.id}_${siswaId}`
+    );
+    const savedAnswers = localStorage.getItem(
+      `selectedAnswers_${ujian.id}_${siswaId}`
+    );
+
+    if (savedRandomization && savedMapping) {
+      // Gunakan data yang sudah tersimpan
+      setRandomizedSoal(JSON.parse(savedRandomization));
+      setSoalMapping(JSON.parse(savedMapping));
+
+      if (savedAnswers) {
+        setSelectedAnswers(JSON.parse(savedAnswers));
+      }
+    } else {
+      // Buat pengacakan baru
+      // Clone dan acak soal
+      const shuffledSoal = shuffleArray([...soalData]);
+      const mapping: Record<string, string> = {};
+
+      // Acak juga pilihan jawaban untuk tiap soal
+      const randomizedSoalWithShuffledAnswers = shuffledSoal.map((soal) => {
+        mapping[soal.id] = soal.id; // Simpan mapping ID asli ke ID teracak
+
+        // Clone dan acak jawaban
+        const shuffledJawaban = shuffleArray([...soal.Jawaban]);
+
+        return {
+          ...soal,
+          Jawaban: shuffledJawaban,
+        };
+      });
+
+      setRandomizedSoal(randomizedSoalWithShuffledAnswers);
+      setSoalMapping(mapping);
+
+      // Simpan hasil pengacakan ke localStorage
+      localStorage.setItem(
+        `randomizedSoal_${ujian.id}_${siswaId}`,
+        JSON.stringify(randomizedSoalWithShuffledAnswers)
+      );
+      localStorage.setItem(
+        `soalMapping_${ujian.id}_${siswaId}`,
+        JSON.stringify(mapping)
+      );
+    }
+  }, [soalData, siswaId, ujian.id]);
+
   useEffect(() => {
     if (state?.success && state.hasilId) {
+      // Bersihkan localStorage hanya jika ujian berhasil diselesaikan
       localStorage.removeItem("waktuMulaiUjian");
+      localStorage.removeItem(`randomizedSoal_${ujian.id}_${siswaId}`);
+      localStorage.removeItem(`soalMapping_${ujian.id}_${siswaId}`);
+      localStorage.removeItem(`selectedAnswers_${ujian.id}_${siswaId}`);
+
       router.push(
         `/ujian/${ujian.mataPelajaran.tingkat}/${ujian.mataPelajaran.pelajaran}/hasil?hasil=${state.hasilId}`
       );
     }
-  }, [state?.success, state?.hasilId, router]);
+  }, [state?.success, state?.hasilId, router, ujian, siswaId]);
 
   useEffect(() => {
     let violationType: string | null = null;
@@ -126,15 +211,27 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     return () => clearInterval(timer); // Cleanup saat unmount
   }, [sisaWaktu]);
 
+  // Simpan jawaban ke localStorage setiap kali berubah
+  useEffect(() => {
+    if (Object.keys(selectedAnswers).length > 0) {
+      localStorage.setItem(
+        `selectedAnswers_${ujian.id}_${siswaId}`,
+        JSON.stringify(selectedAnswers)
+      );
+    }
+  }, [selectedAnswers, ujian.id, siswaId]);
+
   const menit = Math.floor(sisaWaktu / 60);
   const detik = sisaWaktu % 60;
 
-  const progressPercentage = ((currentSoalIndex + 1) / totalSoal) * 100;
+  const totalSoal = randomizedSoal.length;
+  const progressPercentage =
+    totalSoal > 0 ? ((currentSoalIndex + 1) / totalSoal) * 100 : 0;
 
   const handleAnswerSelect = (jawabanId: string) => {
     setSelectedAnswers({
       ...selectedAnswers,
-      [soalData[currentSoalIndex].id]: jawabanId,
+      [randomizedSoal[currentSoalIndex].id]: jawabanId,
     });
   };
 
@@ -156,7 +253,7 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     }
   };
 
-  const currentSoal = soalData[currentSoalIndex];
+  const currentSoal = randomizedSoal[currentSoalIndex];
 
   const generatePaginationItems = () => {
     const items = [];
@@ -257,13 +354,15 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
 
   const handleFormSubmit = (formData: FormData) => {
     // Cek apakah ada soal yang belum dijawab
-    const unansweredSoal = soalData.find((soal) => !selectedAnswers[soal.id]);
+    const unansweredSoal = randomizedSoal.find(
+      (soal) => !selectedAnswers[soal.id]
+    );
 
     if (unansweredSoal) {
       showErrorToast(
-        `Soal nomor ${soalData.indexOf(unansweredSoal) + 1} belum dijawab`
+        `Soal nomor ${randomizedSoal.indexOf(unansweredSoal) + 1} belum dijawab`
       );
-      setCurrentSoalIndex(soalData.indexOf(unansweredSoal)); // Pindahkan ke soal yang belum dijawab
+      setCurrentSoalIndex(randomizedSoal.indexOf(unansweredSoal)); // Pindahkan ke soal yang belum dijawab
       return; // Jangan lanjutkan submit
     }
 
@@ -285,18 +384,32 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     // Tambahkan selectedAnswers sebagai JSON string
     newFormData.append("selectedAnswers", JSON.stringify(selectedAnswers));
 
+    // Tambahkan soalMapping untuk referensi saat penilaian
+    newFormData.append("soalMapping", JSON.stringify(soalMapping));
+
     // Panggil formAction dengan FormData yang sudah lengkap
     formAction(newFormData);
   };
+
+  // Tunggu sampai randomizedSoal siap
+  if (randomizedSoal.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+        <p className="mt-4 text-gray-600">Menyiapkan ujian...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col   gap-y-4 items-center justify-center min-h-screen p-4">
+    <div className="flex flex-col gap-y-4 items-center justify-center min-h-screen p-4">
       <form
         action={async (formData) => handleFormSubmit(formData)}
         className="flex flex-col gap-y-3 w-full max-w-lg"
       >
         <input type="hidden" name="ujianId" value={ujian.id} />
         <input type="hidden" name="siswaDetailId" value={siswaId} />
-        <div className="absolute left-0 top-24  font-medium p-3 rounded-tr-xl rounded-br-xl bg-white shadow-lg">
+        <div className="absolute left-0 top-24 font-medium p-3 rounded-tr-xl rounded-br-xl bg-white shadow-lg">
           <div className="ml-3">{`${menit}:${detik
             .toString()
             .padStart(2, "0")}`}</div>
@@ -308,6 +421,12 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
           value={JSON.stringify(selectedAnswers)}
         />
 
+        <input
+          type="hidden"
+          name="soalMapping"
+          value={JSON.stringify(soalMapping)}
+        />
+
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div
             className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-cyan-300 h-2.5 rounded-full"
@@ -315,53 +434,57 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
           ></div>
         </div>
 
-        <div className="bg-white shadow-md rounded p-4">
-          <div className="flex flex-nowrap gap-2">
-            <p className="text-start">{currentSoalIndex + 1}. </p>
-            <div className="flex flex-col w-full">
-              {currentSoal.gambar && (
-                <div className="mb-3 relative w-full h-48">
-                  <Image
-                    src={currentSoal.gambar}
-                    alt="Gambar Soal"
-                    fill
-                    style={{ objectFit: "contain" }}
-                  />
-                </div>
-              )}
+        {currentSoal && (
+          <div className="bg-white shadow-md rounded p-4">
+            <div className="flex flex-nowrap gap-2">
+              <p className="text-start">{currentSoalIndex + 1}. </p>
+              <div className="flex flex-col w-full">
+                {currentSoal.gambar && (
+                  <div className="mb-3 relative w-full h-48">
+                    <Image
+                      src={currentSoal.gambar}
+                      alt="Gambar Soal"
+                      fill
+                      style={{ objectFit: "contain" }}
+                    />
+                  </div>
+                )}
 
-              <p className="font-medium text-base text-gray-800">
-                {currentSoal.soal}
-              </p>
+                <p className="font-medium text-base text-gray-800">
+                  {currentSoal.soal}
+                </p>
 
-              <div className="mt-4 space-y-4">
-                {currentSoal.Jawaban &&
-                  currentSoal.Jawaban.map((jawaban, idx) => (
-                    <div
-                      key={jawaban.id}
-                      className="flex flex-nowrap items-start gap-2"
-                    >
-                      <input
-                        type="radio"
-                        id={jawaban.id}
-                        name={`soal-${currentSoal.id}`}
-                        value={jawaban.id} // Add this line
-                        checked={selectedAnswers[currentSoal.id] === jawaban.id}
-                        onChange={() => handleAnswerSelect(jawaban.id)}
-                        className="mt-1"
-                      />
-                      <label
-                        htmlFor={jawaban.id}
-                        className="text-sm cursor-pointer"
+                <div className="mt-4 space-y-4">
+                  {currentSoal.Jawaban &&
+                    currentSoal.Jawaban.map((jawaban, idx) => (
+                      <div
+                        key={jawaban.id}
+                        className="flex flex-nowrap items-start gap-2"
                       >
-                        {jawaban.jawaban}
-                      </label>
-                    </div>
-                  ))}
+                        <input
+                          type="radio"
+                          id={jawaban.id}
+                          name={`soal-${currentSoal.id}`}
+                          value={jawaban.id}
+                          checked={
+                            selectedAnswers[currentSoal.id] === jawaban.id
+                          }
+                          onChange={() => handleAnswerSelect(jawaban.id)}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={jawaban.id}
+                          className="text-sm cursor-pointer"
+                        >
+                          {jawaban.jawaban}
+                        </label>
+                      </div>
+                    ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="w-full overflow-x-auto">
           <Pagination>
@@ -404,12 +527,31 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
         {currentSoalIndex === totalSoal - 1 && (
           <button
             type="submit"
-            className="w-full text-white bg-gradient-to-r mt-6 shadow-md from-cyan-500 to-blue-500 hover:bg-gradient-to-bl"
+            className="w-full text-white bg-gradient-to-r mt-6 shadow-md from-cyan-500 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-cyan-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-2 mb-2"
           >
             Kirim Jawaban
           </button>
         )}
       </form>
+
+      {/* Indicator untuk soal yang sudah dijawab */}
+      {/* <div className="w-full max-w-lg mt-4">
+        <div className="flex flex-wrap gap-2 justify-center">
+          {randomizedSoal.map((soal, idx) => (
+            <button
+              key={soal.id}
+              onClick={() => handleJumpToSoal(idx)}
+              className={`w-8 h-8 text-xs rounded-full ${
+                selectedAnswers[soal.id]
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-200 text-gray-700"
+              } ${currentSoalIndex === idx ? "ring-2 ring-blue-500" : ""}`}
+            >
+              {idx + 1}
+            </button>
+          ))}
+        </div>
+      </div> */}
     </div>
   );
 };

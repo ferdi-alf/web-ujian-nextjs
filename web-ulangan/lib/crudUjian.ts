@@ -276,6 +276,7 @@ export async function submitUjian(
       return { success: false, message: "Tidak ada jawaban yang dipilih" };
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const validateFields = submitUjianSchema.parse({ ujianId, siswaDetailId });
 
     const requestData = {

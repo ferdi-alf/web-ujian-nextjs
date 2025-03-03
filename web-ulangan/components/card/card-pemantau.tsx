@@ -44,8 +44,10 @@ export function CardPemantau({ className }: { className?: string }) {
     >
   >([]);
   const { setNewCheatingEvent } = useCheating();
+  const GOLANG_API = process.env.NEXT_PUBLIC_API_URL_GOLANG;
+
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8050/ws/admin");
+    const ws = new WebSocket(`ws://192.168.1.10:8050/ws/admin`);
 
     ws.onmessage = (event) => {
       const data: Item = JSON.parse(event.data);

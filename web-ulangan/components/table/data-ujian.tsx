@@ -34,6 +34,7 @@ import {
 } from "@/components/toast/ToastSuccess";
 import { Trash2Icon } from "lucide-react";
 import { FormButton } from "../button";
+import Swal from "sweetalert2";
 
 interface UjianData {
   id: string;
@@ -138,7 +139,7 @@ function Row({ row }: { row: UjianData }) {
       });
     }
 
-    if (state?.success) {
+    if (state?.success && state?.message) {
       showSuccessToast(state.message);
       mutate("ujian");
     }
@@ -165,18 +166,30 @@ function Row({ row }: { row: UjianData }) {
   };
 
   const handleDelete = async (row: UjianData) => {
-    try {
-      const res = await deleteUjian(row.id);
-      if (res.error && res.message) {
-        showErrorToast(res.message);
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Apakah Anda yakin?",
+      text: `Jika Anda menghapus ujian ${row.mataPelajaran.tingkat} ${row.mataPelajaran.pelajaran}, semua yang berelasi dengan ujian ini termasuk data hasil ujian dan data kecurangan di ujian ini akan terhapus. Harap backup data terkait sebelum menghapus!`,
+      showCancelButton: true,
+      confirmButtonText: "Ya, hapus!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    });
+    if (result.isConfirmed) {
+      try {
+        const res = await deleteUjian(row.id);
+
+        if (res.error && res.message) {
+          showErrorToast(res.message);
+        }
+        if (res.success && res.message) {
+          showSuccessToast(res.message);
+          mutate("ujian");
+        }
+      } catch (error) {
+        console.log(error);
+        showErrorToast("Gagal menghapus data");
       }
-      if (res.success && res.message) {
-        showSuccessToast(res.message);
-        mutate("ujian");
-      }
-    } catch (error) {
-      console.log(error);
-      showErrorToast("Gagal menghapus data");
     }
   };
 

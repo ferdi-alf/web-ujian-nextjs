@@ -51,16 +51,6 @@ model User {
   @@map("users")
 }
 
-model Kelas {
-  id          String        @id @default(cuid())
-  tingkat     Tingkat
-  jurusan     String?
-  siswaDetail SiswaDetail[]
-  users       User[]
-
-  @@map("kelas")
-}
-
 model SiswaDetail {
   id          String       @id @default(cuid())
   userId      String       @unique
@@ -80,6 +70,17 @@ model SiswaDetail {
   @@map("siswa_detail")
 }
 
+
+
+model Kelas {
+  id          String        @id @default(cuid())
+  tingkat     Tingkat
+  jurusan     String?
+  siswaDetail SiswaDetail[]
+  users       User[]
+
+  @@map("kelas")
+}
 
 
 model MataPelajaran {
@@ -126,7 +127,21 @@ model Ujian {
 
   @@map("ujian")
 }
+model Hasil {
+  id              String      @id @default(cuid())
+  siswaDetailId   String
+  ujianId         String
+  waktuPengerjaan String
+  nilai           String
+  benar           String
+  salah           String
+  createdAt       DateTime    @default(now())
+  siswaDetail     SiswaDetail @relation(fields: [siswaDetailId], references: [id], onDelete: Cascade)
+  ujian           Ujian       @relation(fields: [ujianId], references: [id], onDelete: Cascade)
 
+  @@unique([siswaDetailId, ujianId])
+  @@map("hasil")
+}
 model Kecurangan {
   id            String         @id @default(cuid())
   ujianId       String
@@ -138,22 +153,6 @@ model Kecurangan {
   @@map("kecurangan")
 }
 
-model Hasil {
-  id              String      @id @default(cuid())
-  siswaDetailId   String
-  ujianId         String
-  waktuPengerjaan String
-  nilai           String
-  benar           String
-  salah           String
-  createdAt       DateTime    @default(now())
-  siswaDetail     SiswaDetail @relation(fields: [siswaDetailId], references: [id])
-  ujian           Ujian       @relation(fields: [ujianId], references: [id])
-
-  @@unique([siswaDetailId, ujianId])
-  @@map("hasil")
-}
-
 model JawabanSiswa {
   id            String      @id @default(cuid())
   siswaDetailId String
@@ -161,8 +160,8 @@ model JawabanSiswa {
   soalId        String
   jawabanId     String
   createdAt     DateTime    @default(now())
-  siswaDetail   SiswaDetail @relation(fields: [siswaDetailId], references: [id])
-  ujian         Ujian       @relation(fields: [ujianId], references: [id])
+  siswaDetail   SiswaDetail @relation(fields: [siswaDetailId], references: [id], onDelete: Cascade)
+  ujian         Ujian       @relation(fields: [ujianId], references: [id], onDelete: Cascade)
 
   @@map("jawaban_siswa")
 }

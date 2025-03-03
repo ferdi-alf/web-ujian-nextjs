@@ -50,6 +50,25 @@ export async function DELETE(req: NextRequest, { params }: any) {
       );
     }
 
+    const checkUjian = await prisma.ujian.findFirst({
+      where: {
+        mataPelajaranId: id,
+        status: "active",
+      },
+    });
+
+    if (checkUjian) {
+      return NextResponse.json(
+        {
+          error: true,
+          message:
+            "Gagal menghapus, karna mata pelajaran ini terdapat ujian active.",
+          status: 400,
+        },
+        { status: 400 }
+      );
+    }
+
     for (const soal of mataPelajaran.soal) {
       if (soal.gambar) {
         const imagePath = path.join(process.cwd(), "public", soal.gambar);

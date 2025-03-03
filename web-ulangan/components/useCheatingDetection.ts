@@ -60,7 +60,7 @@ const useCheatingDetection = ({
       type: backendType,
       timestamp: Date.now(),
     };
-
+    const GOLANG_API = process.env.NEXT_PUBLIC_API_URL_GOLANG;
     if (type !== "logout" && type !== "logoutWarning") {
       if (
         socketRef.current &&
@@ -68,7 +68,7 @@ const useCheatingDetection = ({
       ) {
         socketRef.current.send(JSON.stringify(cheatingEvent));
       } else {
-        fetch("http://localhost:8050/api/kecurangan", {
+        fetch(`${GOLANG_API}/api/kecurangan`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
