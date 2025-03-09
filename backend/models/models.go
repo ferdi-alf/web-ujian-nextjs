@@ -104,3 +104,33 @@ type HasilDetail struct {
 	MataPelajaran   string         `json:"mataPelajaran"`
 	Tingkat         string         `json:"tingkat"` // Tambahkan tingkat
 }
+
+// Model Kelas
+type Kelas struct {
+	ID   string `json:"id"`
+	Nama string `json:"nama"`
+}
+
+// Model SiswaDetail untuk menyimpan informasi siswa
+type SiswaDetail struct {
+	ID      string `json:"id"`
+	Nama    string `json:"nama"`
+	NIS     string `json:"nis"`
+	KelasID string `json:"kelasId"`
+}
+
+// Model HasilUjian untuk menyimpan hasil ujian siswa
+
+type HasilUjianDetail struct {
+	ID              string `db:"id"`
+	SiswaNama       string
+	Kelas           string
+	Tingkat         string
+	MataPelajaran   string
+	Nilai           string
+	Benar           string
+	Salah           string
+	WaktuPengerjaan string
+	NIS             string
+	TotalKecurangan int
+}

@@ -8,9 +8,22 @@ require (
 	github.com/lib/pq v1.10.9
 )
 
+require github.com/jung-kurt/gofpdf v1.16.2
+
 require (
+	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
+	github.com/golang/snappy v0.0.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/mholt/archiver/v3 v3.5.1
+	github.com/nwaples/rardecode v1.1.0 // indirect
+	github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
+	github.com/pierrec/lz4/v4 v4.1.2 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
+	github.com/signintech/gopdf v0.30.0
+	github.com/ulikunitz/xz v0.5.9 // indirect
+	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
 

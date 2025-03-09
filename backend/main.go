@@ -50,7 +50,12 @@ func main() {
     ujianHandler := handlers.NewUjianHandler(db)
     app.Post("/api/ujian/submit", ujianHandler.SubmitUjian)
     app.Get("/api/hasil/:id", ujianHandler.GetHasilDetail)
+    app.Get("/api/ujian/download", func(c *fiber.Ctx) error {
+    return handlers.DownloadHasilUjian(c, db)
+})
     handlers.SetupWebSocket(app, db)
+
+
 
 
     // Start server - pindahkan ke akhir
