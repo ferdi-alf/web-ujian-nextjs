@@ -1,0 +1,106 @@
+[
+  {
+    "chartDataX": {
+      "chart-1": [
+        {
+          "mataPelajaran": "BIndo",
+          "totalKecurangan": "27"
+        },
+        {
+          "mataPelajaran": "Sejarah",
+          "totalKecurangan": "36"
+        }
+      ],
+      "chart-2": [
+        {
+          "kelas": "X-RPL",
+          "totalKecurangan": "12"
+        },
+        {
+          "kelas": "X-TKJ",
+          "totalKecurangan": "16"
+        }
+      ]
+    },
+    "chartDataXI": {
+      "chart-1": [
+        {
+          "mataPelajaran": "BInggris",
+          "totalKecurangan": "56"
+        },
+        {
+          "mataPelajaran": "Sejarah",
+          "totalKecurangan": "43"
+        }
+      ],
+      "chart-2": [
+        {
+          "kelas": "XI-RPL",
+          "totalKecurangan": "14"
+        },
+        {
+          "kelas": "XI-TKJ",
+          "totalKecurangan": "18"
+        }
+      ]
+    }
+  },
+  {
+    "id": "4d1dc326-0539-4281-ab93-ea890badfda1",
+    "ujianId": "cm7y6u4bb002i7kfw6q28gjfp",
+    "siswaDetailId": "cm7y65prs001w7kfw9pxp5re6",
+    "type": "blurred",
+    "siswaDetail": {
+      "id": "cm7y65prs001w7kfw9pxp5re6",
+      "userId": "cm7y65prn001t7kfwlnoumo4t",
+      "name": "NANDA LURIS",
+      "kelasId": "cm7y5chq500027kfwkvufxjs0",
+      "status": "AKTIF",
+      "kelamin": "P",
+      "nis": "238030",
+      "nomor_ujian": "238030",
+      "ruang": "1 (E1)"
+    },
+    "ujian": {
+      "id": "cm7y6u4bb002i7kfw6q28gjfp",
+      "mataPelajaranId": "0984bc03-5afb-4b4a-b9ee-32af0b6e923f",
+      "token": "QGYQG",
+      "waktuPengerjaan": 30,
+      "status": "active",
+      "mataPelajaran": {
+        "id": "0984bc03-5afb-4b4a-b9ee-32af0b6e923f",
+        "tingkat": "XII",
+        "pelajaran": "BIndo"
+      }
+    }
+  },
+  {
+    "id": "4039191d-59c0-4f61-922a-489ef1887a90",
+    "ujianId": "cm7y6u4bb002i7kfw6q28gjfp",
+    "siswaDetailId": "cm7y65prs001w7kfw9pxp5re6",
+    "type": "tabHidden",
+    "siswaDetail": {
+      "id": "cm7y65prs001w7kfw9pxp5re6",
+      "userId": "cm7y65prn001t7kfwlnoumo4t",
+      "name": "NANDA LURIS",
+      "kelasId": "cm7y5chq500027kfwkvufxjs0",
+      "status": "AKTIF",
+      "kelamin": "P",
+      "nis": "238030",
+      "nomor_ujian": "238030",
+      "ruang": "1 (E1)"
+    },
+    "ujian": {
+      "id": "cm7y6u4bb002i7kfw6q28gjfp",
+      "mataPelajaranId": "0984bc03-5afb-4b4a-b9ee-32af0b6e923f",
+      "token": "QGYQG",
+      "waktuPengerjaan": 30,
+      "status": "active",
+      "mataPelajaran": {
+        "id": "0984bc03-5afb-4b4a-b9ee-32af0b6e923f",
+        "tingkat": "XII",
+        "pelajaran": "BIndo"
+      }
+    }
+  }
+]

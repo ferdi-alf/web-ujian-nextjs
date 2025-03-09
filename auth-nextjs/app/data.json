@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cm7w5uzlx002h7knkdel99fk9",
+    "tingkat": "XI",
+    "pelajaran": "Sejarah",
+    "kelas": [
+      {
+        "id": "cm7w4uvuk00017knklim3sz9h",
+        "tingkat": "XI",
+        "jurusan": "RPL",
+        "siswa": [
+          {
+            "id": "cm7w52ubs001q7knkfq4m9ch8",
+            "name": "MUHAMMAD FERDI ALFIAN",
+            "nis": "238025",
+            "nomor_ujian": "238025",
+            "ruang": "1 (E1)",
+            "nilai": "83",
+            "benar": "20",
+            "salah": "4",
+            "waktuPengerjaan": "191"
+          },
+          {
+            "id": "cm7wrx83i00037k8wvwu6vyzg",
+            "name": "Pak afiq",
+            "nis": "23476",
+            "nomor_ujian": "23476",
+            "ruang": "E1",
+            "nilai": "11",
+            "benar": "3",
+            "salah": "23",
+            "waktuPengerjaan": "256"
+          }
+        ]
+      }
+    ]
+  }
+]
