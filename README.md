@@ -5,7 +5,7 @@ Proyek ini sedang dalam pengembangan dengan fitur-fitur canggih, termasuk:
 - ✪ **Realtime pemantauan kecurangan siswa** 📱
 - ✪ **Analytic chart untuk hasil ujian** 📊
 - ✪ **Deteksi kecurangan siswa** 🔍
-- ✪ **Deteksi lokasi siswa jika berada diluar lingkungan sekolah** 🔍
+- ✪ **Deteksi lokasi siswa jika berada diluar lingkungan sekolah** 🏫
 - ✪ **Fitur tambahan lainnya untuk meningkatkan pengalaman ujian online** 💡
 
 ## Status Pengembangan 🛠️
