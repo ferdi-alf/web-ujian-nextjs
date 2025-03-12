@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function PUT(request: NextRequest, { params }: any) {
   try {
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("next-auth.session-token")?.value;
+    const sessionCookie = cookieStore.get("authjs.session-token")?.value;
 
     if (!sessionCookie) {
       return NextResponse.json(

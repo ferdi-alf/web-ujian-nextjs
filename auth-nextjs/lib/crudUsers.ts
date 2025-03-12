@@ -1,6 +1,10 @@
 "use server";
 import { auth } from "@/auth";
-import { AddUserSchema, UpdateUsersSchema } from "@/lib/zod";
+import {
+  AddUserSchema,
+  UpdateUsersSchema,
+  UpdatProfileSchema,
+} from "@/lib/zod";
 import { revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -139,7 +143,7 @@ export const updateUsers = async (prevState: unknown, formData: FormData) => {
     const { id, username, role, kelasId, password } = validateFields.data;
     const apiUrl = process.env.NEXT_URL_API_URL || "http://localhost:3000";
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("next-auth.session-token");
+    const sessionCookie = cookieStore.get("authjs.session-token");
 
     const bodyData = {
       id,
@@ -153,7 +157,7 @@ export const updateUsers = async (prevState: unknown, formData: FormData) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Cookie: `next-auth.session-token=${sessionCookie?.value}`,
+        Cookie: `authjs.session-token=${sessionCookie?.value}`,
       },
       body: JSON.stringify(bodyData),
       credentials: "include",
@@ -170,7 +174,82 @@ export const updateUsers = async (prevState: unknown, formData: FormData) => {
     return {
       success: true,
       data: responseData.data,
-      message: "Berhasil mengupdate users",
+      message: "Berhasil mengupdate data",
+    };
+  } catch (error) {
+    console.error("Error saat update:", error);
+    return {
+      error: {
+        server: (error as Error).message || "Terjadi kesalahan pada server",
+      },
+    };
+  }
+};
+
+export const updateProfile = async (prevState: unknown, formData: FormData) => {
+  try {
+    const file = formData.get("image") as File;
+    if (file && file.size === 0) {
+      formData.delete("image");
+    }
+
+    const session = await auth();
+    const idUser = session?.user?.id;
+
+    // Ambil semua data dari FormData
+    const name = formData.get("name") as string;
+    const oldPassword = formData.get("oldPassword") as string;
+    const newPassword = formData.get("newPassword") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
+
+    // Buat objek data untuk validasi
+    const validationData = {
+      id: idUser,
+      username: name,
+      ...(oldPassword && { oldPassword: oldPassword }),
+      ...(newPassword && { newPassword: newPassword }),
+      ...(confirmPassword && { confirmPassword: confirmPassword }),
+    };
+
+    const validateFields = UpdatProfileSchema.safeParse(validationData);
+
+    if (!validateFields.success) {
+      return {
+        error: validateFields.error.flatten().fieldErrors,
+      };
+    }
+
+    console.log("Validated data:", validateFields.data);
+
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("authjs.session-token");
+    const apiUrl = process.env.NEXT_URL_API_URL || "http://localhost:3000";
+
+    // Kirim data ke API
+    const response = await fetch(`${apiUrl}/api/update-profile/${idUser}`, {
+      method: "PUT",
+      headers: {
+        Cookie: `authjs.session-token=${sessionCookie?.value}`,
+      },
+      body: formData,
+      credentials: "include",
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      if (responseData.error && typeof responseData.error === "object") {
+        return {
+          error: responseData.error,
+        };
+      }
+      throw new Error(responseData.message || "Gagal mengupdate data");
+    }
+
+    return {
+      success: true,
+      data: responseData.data,
+      message: "Berhasil Mengupdate Data",
     };
   } catch (error) {
     console.error("Error saat update:", error);

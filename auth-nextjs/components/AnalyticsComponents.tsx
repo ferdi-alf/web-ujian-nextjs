@@ -78,10 +78,10 @@ interface ChartData {
 
 function ChartUi({ title, chartData }: ChartData) {
   return (
-    <div className="p-2 rounded-lg">
+    <div className="p-2 rounded-lg ">
       {/* Header Judul */}
       <div
-        className="w-72 p-2 pl-4 bg-slate-100 font-medium relative rounded-tr-3xl rounded-tl-lg"
+        className="w-72 p-2 pl-4 border-t  bg-slate-100 font-medium relative rounded-tr-3xl rounded-tl-lg"
         style={{
           clipPath: "polygon(0% 0%, 85% 0%, 100% 40%, 100% 100%, 0% 100%)",
         }}

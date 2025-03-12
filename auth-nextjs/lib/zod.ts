@@ -49,6 +49,74 @@ export const AddUserSchema = z
     }
   });
 
+export const UpdatProfileSchema = z
+  .object({
+    id: z.string({
+      required_error: "ID user diperlukan",
+    }),
+    username: z
+      .string({
+        required_error: "Username diperlukan ",
+      })
+      .min(3, "Username minimal 3 karakter ")
+      .optional(),
+    image: z
+      .any()
+      .refine(
+        (file) =>
+          !file ||
+          (file instanceof File && ACCEPTED_IMAGE_TYPES.includes(file.type)),
+        {
+          message: "Format gambar tidak valid (hanya: JPG, PNG, WEBP)",
+          path: ["image"],
+        }
+      )
+      .optional(),
+    oldPassword: z.string().optional(),
+    newPassword: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // Jika newPassword ada, confirmPassword harus sama dengan newPassword
+      if (data.newPassword && data.newPassword !== data.confirmPassword) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Password baru dan konfirmasi password harus sama",
+      path: ["confirmPassword"],
+    }
+  )
+  .refine(
+    (data) => {
+      // Jika oldPassword tidak kosong, newPassword dan confirmPassword harus diisi
+      if (data.oldPassword && (!data.newPassword || !data.confirmPassword)) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message:
+        "Password baru dan konfirmasi password harus diisi jika password lama diisi",
+      path: ["newPassword"],
+    }
+  )
+  .refine(
+    (data) => {
+      // Jika newPassword ada, confirmPassword tidak boleh kosong
+      if (data.newPassword && !data.confirmPassword) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Konfirmasi password diperlukan jika password baru diisi",
+      path: ["confirmPassword"],
+    }
+  );
+
 export const UpdateUsersSchema = z
   .object({
     id: z.string({
