@@ -18,7 +18,7 @@ import { showErrorToast } from "@/components/toast/ToastSuccess";
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [state, formAction] = useActionState(LoginCredentials, null);
-  console.log(state);
+  console.log("wkwkw", state);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (

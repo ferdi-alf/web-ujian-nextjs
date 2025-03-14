@@ -10,8 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Kelas } from "@prisma/client";
-import { getKelas } from "@/lib/crudKelas";
 
 interface KelasId {
   id: string;
@@ -35,7 +33,6 @@ const FormInputUsers = ({
   initialData: UserData;
 }) => {
   const [selectedRole, setSelectedRole] = React.useState(initialData?.role);
-  const [classes, setClasses] = React.useState<Kelas[]>([]);
 
   const usernameError = Array.isArray(state?.error?.username)
     ? state.error.username[0]
@@ -43,30 +40,16 @@ const FormInputUsers = ({
   const roleError = Array.isArray(state?.error?.role)
     ? state.error.role[0]
     : state?.error?.role;
-  const kelasError = Array.isArray(state?.error?.kelasId)
-    ? state.error.kelasId[0]
-    : state?.error?.kelasId;
+  const jurusanError = Array.isArray(state?.error?.jurusan)
+    ? state.error.jurusan[0]
+    : state?.error?.jurusan;
   const passwordError = Array.isArray(state?.error?.password)
     ? state.error.password[0]
     : state?.error?.password;
 
-  React.useEffect(() => {
-    const fetchKelas = async () => {
-      const KelasList = await getKelas();
-      setClasses(KelasList || []);
-    };
-    fetchKelas();
-  }, []);
-
   const handleModalClick = (event: React.MouseEvent) => {
     event.stopPropagation(); // Mencegah event bubbling ke elemen induk
   };
-
-  const groupClasses: Record<string, Kelas[]> = classes.reduce((acc, kelas) => {
-    if (!acc[kelas.tingkat]) acc[kelas.tingkat] = [];
-    acc[kelas.tingkat].push(kelas);
-    return acc;
-  }, {} as Record<string, Kelas[]>);
 
   return (
     <>
@@ -145,29 +128,32 @@ const FormInputUsers = ({
       {roleError && <p className="text-red-500">{roleError}</p>}
 
       {selectedRole === "PROKTOR" && (
-        <Select name="kelasId" defaultValue={initialData?.kelasId?.id}>
+        <Select name="jurusan" defaultValue={initialData?.kelasId?.id}>
           <p className="mt-4 mb-2 text-start text-gray-500 text-sm">
-            Harap pilih kelas untuk menentukan kelas yang di awasi Proktor
+            Harap pilih Jurusan menentukan Proktor
           </p>
           <SelectTrigger
-            className={`${kelasError ? "border-red-700 border-2" : ""}`}
+            className={`${jurusanError ? "border-red-700 border-2" : ""}`}
           >
-            <SelectValue placeholder="Pilih Kelas" />
+            <SelectValue placeholder="Pilih Jurusan" />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(groupClasses).map(([tingkat, tingkatClasses]) => (
-              <SelectGroup key={tingkat}>
-                <SelectLabel>Tingkat {tingkat}</SelectLabel>
-                {tingkatClasses.map((Kelas) => (
-                  <SelectItem key={Kelas.id} value={Kelas.id.toString()}>
-                    {Kelas.tingkat} {Kelas.jurusan}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
+            <SelectGroup>
+              <SelectLabel>Jurusan</SelectLabel>
+              <SelectItem value="TKJ">TKJ</SelectItem>
+              <SelectItem value="RPL">RPL</SelectItem>
+              <SelectItem value="TKR">TKR</SelectItem>
+              <SelectItem value="TAV">TAV</SelectItem>
+              <SelectItem value="TP">TP</SelectItem>
+              <SelectItem value="TSM">TSM</SelectItem>
+              <SelectItem value="TITL">TITL</SelectItem>
+              <SelectItem value="DPIB">DPIB</SelectItem>
+            </SelectGroup>
           </SelectContent>
-          {kelasError && (
-            <p className="mt-2 text-start text-red-700 text-sm">{kelasError}</p>
+          {jurusanError && (
+            <p className="mt-2 text-start text-red-700 text-sm">
+              {jurusanError}
+            </p>
           )}
         </Select>
       )}

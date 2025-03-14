@@ -7,8 +7,11 @@ declare module "next-auth" {
     user: User & DefaultSession["user"];
   }
   interface User {
+    id: string;
     username: string;
     role: string;
+    status: string;
+    jurusan?: string;
   }
 }
 

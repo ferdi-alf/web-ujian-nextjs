@@ -21,27 +21,6 @@ import {
 } from "@/components/ui/chart";
 import { useCheating } from "../CheatingContext";
 
-// Type for chart data
-interface ChartDataItem {
-  tingkat: string;
-  jurusan: string;
-  count: number;
-}
-
-// Function to fetch cheating stats from API
-const fetchCheatingStats = async () => {
-  try {
-    const response = await fetch("/api/kecurangan/");
-    if (!response.ok) {
-      throw new Error("Failed to fetch cheating stats");
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching cheating stats:", error);
-    throw error;
-  }
-};
-
 const chartConfig = {
   count: {
     label: "Jumlah Kecurangan:",

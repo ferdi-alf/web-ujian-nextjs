@@ -42,7 +42,6 @@ model User {
   image           String?
   role            Role         @default(SISWA)
   password        String?
-  kelasId         String?
   status          UserStatus   @default(OFFLINE)
   lastLogin       DateTime?
   loginCount      Int          @default(0)
@@ -50,7 +49,7 @@ model User {
   accounts        Account[]
   sessions        Session[]
   siswaDetail     SiswaDetail?
-  kelas           Kelas?       @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  jurusan         String?
 
   @@map("users")
 }
@@ -71,7 +70,6 @@ model Kelas {
   tingkat     Tingkat
   jurusan     String?
   siswaDetail SiswaDetail[]
-  users       User[]
 
   @@map("kelas")
 }

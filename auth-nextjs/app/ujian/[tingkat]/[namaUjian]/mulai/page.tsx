@@ -15,6 +15,17 @@ export default async function HalamanUjian(props: { params: Tparams }) {
       notFound();
     }
 
+    if (session.user.id) {
+      await prisma.user.update({
+        where: {
+          id: session.user.id,
+        },
+        data: {
+          status: "UJIAN",
+        },
+      });
+    }
+
     const siswaDetail = await prisma.siswaDetail.findUnique({
       where: {
         userId: session.user.id,

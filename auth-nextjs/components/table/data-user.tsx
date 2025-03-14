@@ -30,17 +30,11 @@ import {
   showSuccessToast,
 } from "@/components/toast/ToastSuccess";
 
-interface KelasId {
-  id: string;
-  tingkat: string;
-  jurusan: string;
-}
-
 interface UsersData {
   id: string;
   username: string;
   role: string;
-  kelasId?: KelasId;
+  jurusan?: string;
   image?: string;
 }
 
@@ -74,13 +68,7 @@ export default function DataUsers() {
       id: user.id,
       username: user.username || "",
       role: user.role,
-      kelasId: user.kelas
-        ? {
-            id: user.kelas.id,
-            tingkat: user.kelas.tingkat,
-            jurusan: user.kelas.jurusan || "",
-          }
-        : undefined,
+      jurusan: user.jurusan,
       image: user.image || "",
     }));
 
@@ -240,7 +228,7 @@ function UserTable({
               <TableCell>No</TableCell>
               <TableCell>Avatar</TableCell>
               <TableCell>Username</TableCell>
-              {title === "Data Akses Proktor" && <TableCell>Kelas</TableCell>}
+              {title === "Data Akses Proktor" && <TableCell>Jurusan</TableCell>}
               <TableCell>Role</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -279,8 +267,7 @@ function UserTable({
                     {title === "Data Akses Proktor" && (
                       <>
                         <TableCell className="truncate">
-                          {row.kelasId?.tingkat || "-"} {" - "}
-                          {row.kelasId?.jurusan || "-"}
+                          {row.jurusan}
                         </TableCell>
                       </>
                     )}

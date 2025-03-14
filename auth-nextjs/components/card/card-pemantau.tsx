@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { AnimatedList } from "@/components/ui/animated-list";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { mutate } from "swr";
 import { useCheating } from "../CheatingContext";
 
 interface Item {

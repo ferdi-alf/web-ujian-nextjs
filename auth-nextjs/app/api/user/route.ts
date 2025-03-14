@@ -6,21 +6,17 @@ import { AddUserSchema } from "@/lib/zod";
 import { hash } from "bcrypt-ts";
 
 export async function GET() {
-  // Ambil session untuk mengecek apakah pengguna sudah login
   const session = await auth();
 
-  // Jika tidak ada session, beri respons Unauthorized
   if (!session) {
     return NextResponse.json({
       status: 401,
-      message: "Unauthorized",
     });
   }
 
   const userId = session.user?.id;
 
   try {
-    // Jika tidak ada parameter 'id', ambil data user yang sedang login
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -82,38 +78,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, role, kelasId, password } = validateFields.data;
+    const { username, role, jurusan, password } = validateFields.data;
+    console.log("Data yang diterima:", validateFields.data);
     const hashedPassword = await hash(password, 10);
-
+    const upperJurusan = jurusan ? jurusan.toUpperCase() : undefined;
     const existingKelas = await prisma.kelas.findFirst({
       where: {
-        id: kelasId,
+        jurusan: {
+          contains: upperJurusan,
+          mode: "insensitive",
+        },
       },
     });
-
     if (!existingKelas) {
       return NextResponse.json(
         {
-          message: "Kelas tidak ditemukan",
+          message: "Jurusan tidak ditemukan",
           error: {
-            kelasId: "ID kelas tidak valid",
+            jurusan: "Jurusan tidak valid",
           },
         },
         { status: 404 }
       );
     }
 
+    console.log("Data yang dikirim ke Prisma:", {
+      username,
+      role,
+      jurusan: upperJurusan,
+      password: hashedPassword,
+    });
+
     const newUsers = await prisma.user.create({
       data: {
         username,
         role,
-        kelasId,
+        jurusan: upperJurusan,
         password: hashedPassword,
       },
     });
+
+    if (!newUsers) {
+      throw new Error("Gagal menambahkan user ke database");
+    }
     return NextResponse.json({ succes: true, data: newUsers }, { status: 201 });
   } catch (error) {
-    console.error("Error in /api/kelas:", error);
+    console.error("Error in /api/user:", error);
     return NextResponse.json(
       {
         message: "Terjadi kesalahan pada server",

@@ -38,9 +38,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!passwordMatch) return null;
 
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            status: "ONLINE",
+            lastLogin: new Date(),
+            lastLoginAt: user.lastLogin, // Save previous login time
+            loginCount: { increment: 1 },
+          },
+        });
+
         return {
           ...user,
           username: user.username || "",
+          jurusan: user.jurusan || undefined,
         };
       },
     }),
@@ -138,6 +149,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = user.role;
         token.username = user.username;
+        token.status = user.status;
+        token.jurusan = user.jurusan;
       }
       return token;
     },
@@ -145,6 +158,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = token.sub;
       session.user.role = token.role;
       session.user.username = token.username;
+      session.user.jurusan = token.jurusan as string;
+      session.user.status = token.status as string;
       return session;
     },
   },

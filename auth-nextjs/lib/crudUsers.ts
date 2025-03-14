@@ -22,7 +22,7 @@ export const AddUser = async (prevState: unknown, formData: FormData) => {
       };
     }
 
-    const { username, role, kelasId, password } = validateFields.data;
+    const { username, role, jurusan, password } = validateFields.data;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
     const cookieStore = await cookies();
@@ -34,7 +34,7 @@ export const AddUser = async (prevState: unknown, formData: FormData) => {
         "Content-Type": "application/json",
         Cookie: `authjs.session-token=${sessionCookie?.value}`,
       },
-      body: JSON.stringify({ username, role, kelasId, password }),
+      body: JSON.stringify({ username, role, jurusan, password }),
       credentials: "include",
     });
 
@@ -78,16 +78,7 @@ export const getUsers = async () => {
     const admin = await prisma.user.findMany({
       where: {
         role: {
-          in: ["ADMIN", "PROKTOR"], // Filter berdasarkan role
-        },
-      },
-      include: {
-        kelas: {
-          select: {
-            id: true,
-            tingkat: true,
-            jurusan: true,
-          },
+          in: ["ADMIN", "PROKTOR"],
         },
       },
     });

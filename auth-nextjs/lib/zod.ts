@@ -33,17 +33,17 @@ export const AddUserSchema = z
   .object({
     username: z.string().nonempty({ message: "username tidak boleh kosong" }),
     role: Role,
-    kelasId: z.string().optional(), // sesuaikan dengan model dan form
+    jurusan: z.string().optional(),
     password: z.string().min(8, "password harus berisi minimal 8 karakter"),
   })
   .superRefine((data, ctx) => {
     if (
       data.role === "PROKTOR" &&
-      (!data.kelasId || data.kelasId.trim() === "")
+      (!data.jurusan || data.jurusan.trim() === "")
     ) {
       ctx.addIssue({
-        path: ["kelasId"],
-        message: "Kelas wajib dipilih untuk role Proktor",
+        path: ["jurusan"],
+        message: "jurusan wajib dipilih untuk role Proktor",
         code: "custom",
       });
     }
