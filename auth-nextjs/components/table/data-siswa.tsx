@@ -2,8 +2,8 @@
 "use client";
 
 import { getSiswa } from "@/lib/crudSiswa";
-import React from "react";
-import useSWR from "swr";
+import React, { useEffect } from "react";
+import useSWR, { mutate } from "swr";
 import TableLoading from "@/components/skeleton/Table-loading";
 import {
   Box,
@@ -20,8 +20,8 @@ import {
 } from "@mui/material";
 import FrameDataUsers from "../dialog/FrameDataUsers";
 import { showErrorToast } from "../toast/ToastSuccess";
+import { useSocket } from "@/lib/socketContext";
 
-// 🚀 Ambil data siswa dari API
 const fetchSiswa = async () => {
   try {
     const data = await getSiswa();
@@ -39,75 +39,215 @@ const TableDataSiswa = () => {
   const [rowsPerPageXI, setRowsPerPageXI] = React.useState(5);
   const [pagePerXII, setPagePerXII] = React.useState(0);
   const [rowsPerPageXII, setRowsPerPageXII] = React.useState(5);
+  const { socket, isConnected } = useSocket();
 
-  const { data: rawData, error, isLoading } = useSWR("siswa", fetchSiswa);
+  useEffect(() => {
+    // Trigger mutate setelah komponen mount
+    setTimeout(() => {
+      mutate("siswa");
+    }, 200);
 
-  const { X, XI, XII, siswaPerKelasX, siswaPerKelasXI, siswaPerKelasXII } =
-    React.useMemo(() => {
-      if (!rawData)
-        return {
-          X: [],
-          XI: [],
-          XII: [],
-          siswaPerKelasX: {},
-          siswaPerKelasXI: {},
-          siswaPerKelasXII: {},
-        };
+    // Tambahkan event listener untuk visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log("Tab became visible, revalidating data...");
+        mutate("siswa");
+      }
+    };
 
-      const formattedData = rawData.map((siswa: any) => ({
-        id: siswa.id,
-        name: siswa.name,
-        nis: siswa.nis,
-        kelamin: siswa.kelamin,
-        nomor_ujian: siswa.nomor_ujian,
-        ruang: siswa.ruang,
-        userId: siswa.user
-          ? {
-              id: siswa.user.id,
-              username: siswa.user.username,
-              role: siswa.user.role,
-              image: siswa.user.image,
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  const initialData = {};
+  const {
+    data: rawData,
+    error,
+    isLoading,
+  } = useSWR("siswa", fetchSiswa, {
+    revalidateOnMount: true,
+    initialData: initialData,
+    revalidateOnFocus: true,
+    dedupingInterval: 2000,
+  });
+  console.log(rawData);
+
+  useEffect(() => {
+    if (isConnected) {
+      console.log("Socket connected, revalidating data...");
+      mutate("siswa");
+    }
+  }, [isConnected]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatusUpdate = (updatedData: any) => {
+      console.log("Status update received:", updatedData);
+
+      mutate(
+        "siswa",
+        (oldData: any) => {
+          if (!oldData) return oldData;
+
+          const updatedMap = new Map();
+          updatedData.forEach((item: any) => {
+            updatedMap.set(item.id, item);
+          });
+
+          return oldData.map((oldItem: any) => {
+            const updatedItem = updatedMap.get(oldItem.id);
+            if (updatedItem) {
+              return {
+                ...oldItem,
+                user: {
+                  ...oldItem.user,
+                  status: updatedItem.user?.status || "OFFLINE",
+                },
+              };
             }
-          : undefined,
-        kelasId: siswa.kelas
-          ? {
-              id: siswa.kelas.id,
-              tingkat: siswa.kelas.tingkat,
-              jurusan: siswa.kelas.jurusan,
-            }
-          : undefined,
-      }));
-
-      // 🔹 Filter siswa berdasarkan tingkat kelas
-      const X = formattedData.filter((siswa) => siswa.kelasId?.tingkat === "X");
-      const XI = formattedData.filter(
-        (siswa) => siswa.kelasId?.tingkat === "XI"
+            return oldItem;
+          });
+        },
+        false
       );
-      const XII = formattedData.filter(
-        (siswa) => siswa.kelasId?.tingkat === "XII"
-      );
+    };
 
-      // 🔹 Hitung jumlah siswa berdasarkan tingkat dan jurusan
-      const hitungSiswaPerKelas = (siswaList: any[]) => {
-        return siswaList.reduce((acc: Record<string, number>, siswa) => {
-          const jurusan = siswa.kelasId?.jurusan;
-          if (jurusan) {
-            const key = `${siswa.kelasId?.tingkat} - ${jurusan}`;
-            acc[key] = (acc[key] || 0) + 1;
-          }
-          return acc;
-        }, {});
-      };
+    socket.on("statusSiswaUpdate", handleStatusUpdate);
 
+    return () => {
+      socket.off("statusSiswaUpdate", handleStatusUpdate);
+    };
+  }, [socket]);
+
+  const {
+    X,
+    XI,
+    XII,
+    siswaPerKelasX,
+    siswaPerKelasXI,
+    siswaPerKelasXII,
+    statusSiswaPerX,
+    statusSiswaPerXI,
+    statusSiswaPerXII,
+    statusSiswaPerKelasX,
+    statusSiswaPerKelasXI,
+    statusSiswaPerKelasXII,
+  } = React.useMemo(() => {
+    if (!rawData)
       return {
-        X,
-        XI,
-        XII,
-        siswaPerKelasX: hitungSiswaPerKelas(X),
-        siswaPerKelasXI: hitungSiswaPerKelas(XI),
-        siswaPerKelasXII: hitungSiswaPerKelas(XII),
+        X: [],
+        XI: [],
+        XII: [],
+        siswaPerKelasX: {},
+        siswaPerKelasXI: {},
+        siswaPerKelasXII: {},
+        statusSiswaPerX: {},
+        statusSiswaPerXI: {},
+        statusSiswaPerXII: {},
+        statusSiswaPerKelasX: {},
+        statusSiswaPerKelasXI: {},
+        statusSiswaPerKelasXII: {},
       };
-    }, [rawData]);
+
+    const formattedData = rawData.map((siswa: any) => ({
+      id: siswa.id,
+      name: siswa.name,
+      nis: siswa.nis,
+      kelamin: siswa.kelamin,
+      nomor_ujian: siswa.nomor_ujian,
+      ruang: siswa.ruang,
+      userId: siswa.user
+        ? {
+            id: siswa.user.id,
+            username: siswa.user.username,
+            role: siswa.user.role,
+            image: siswa.user.image,
+            status: siswa.user.status,
+          }
+        : undefined,
+      kelasId: siswa.kelas
+        ? {
+            id: siswa.kelas.id,
+            tingkat: siswa.kelas.tingkat,
+            jurusan: siswa.kelas.jurusan,
+          }
+        : undefined,
+    }));
+
+    const X = formattedData.filter((siswa) => siswa.kelasId?.tingkat === "X");
+    const XI = formattedData.filter((siswa) => siswa.kelasId?.tingkat === "XI");
+    const XII = formattedData.filter(
+      (siswa) => siswa.kelasId?.tingkat === "XII"
+    );
+
+    const hitungSiswaPerKelas = (siswaList: any[]) => {
+      return siswaList.reduce((acc: Record<string, number>, siswa) => {
+        const jurusan = siswa.kelasId?.jurusan;
+        if (jurusan) {
+          const key = `${siswa.kelasId?.tingkat} - ${jurusan}`;
+          acc[key] = (acc[key] || 0) + 1;
+        }
+        return acc;
+      }, {});
+    };
+
+    const hitungStatusSiswaPerTingkat = (siswaList: any[]) => {
+      return siswaList.reduce((acc: Record<string, number>, siswa) => {
+        const status = siswa.userId?.status || "OFFLINE";
+
+        if (!acc["ONLINE"]) acc["ONLINE"] = 0;
+        if (!acc["UJIAN"]) acc["UJIAN"] = 0;
+        if (!acc["SELESAI_UJIAN"]) acc["SELESAI_UJIAN"] = 0;
+        if (!acc["OFFLINE"]) acc["OFFLINE"] = 0;
+
+        // Increment status
+        acc[status] = (acc[status] || 0) + 1;
+
+        return acc;
+      }, {});
+    };
+
+    const hitungStatusSiswaPerKelas = (siswaList: any[]) => {
+      return siswaList.reduce(
+        (acc: Record<string, Record<string, number>>, siswa) => {
+          const jurusan = siswa.kelasId?.jurusan;
+          const tingkat = siswa.kelasId?.tingkat;
+          const status = siswa.userId?.status || "OFFLINE";
+
+          if (jurusan && tingkat) {
+            const key = `${tingkat} - ${jurusan}`;
+
+            if (!acc[key]) {
+              acc[key] = { ONLINE: 0, UJIAN: 0, SELESAI_UJIAN: 0, OFFLINE: 0 };
+            }
+            acc[key][status] = (acc[key][status] || 0) + 1;
+          }
+
+          return acc;
+        },
+        {}
+      );
+    };
+
+    return {
+      X,
+      XI,
+      XII,
+      siswaPerKelasX: hitungSiswaPerKelas(X),
+      siswaPerKelasXI: hitungSiswaPerKelas(XI),
+      siswaPerKelasXII: hitungSiswaPerKelas(XII),
+      statusSiswaPerX: hitungStatusSiswaPerTingkat(X),
+      statusSiswaPerXI: hitungStatusSiswaPerTingkat(XI),
+      statusSiswaPerXII: hitungStatusSiswaPerTingkat(XII),
+      statusSiswaPerKelasX: hitungStatusSiswaPerKelas(X),
+      statusSiswaPerKelasXI: hitungStatusSiswaPerKelas(XI),
+      statusSiswaPerKelasXII: hitungStatusSiswaPerKelas(XII),
+    };
+  }, [rawData]);
 
   if (isLoading) {
     return <TableLoading />;
@@ -120,10 +260,23 @@ const TableDataSiswa = () => {
 
   return (
     <Box sx={{ width: "100%" }}>
+      {isConnected ? (
+        <div className="mb-2 inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-sm border border-green-400">
+          <span className="w-2 h-2 mr-1 bg-green-500 rounded-full"></span>
+          Realtime status aktif
+        </div>
+      ) : (
+        <div className="mb-2 inline-flex items-center bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-sm border border-red-400">
+          <span className="w-2 h-2 mr-1 bg-red-500 rounded-full"></span>
+          Realtime status tidak aktif
+        </div>
+      )}
       <SiswaTable
         title="Data Kelas X"
         siswa={X} // ✅ Perbaikan: Kirim siswa X
+        statusSiswaPerTingkat={statusSiswaPerX}
         siswaPerKelas={siswaPerKelasX}
+        statusSiswaPerKelas={statusSiswaPerKelasX}
         page={pagePerX}
         setPage={setPagePerX}
         rowPerPage={rowsPerPageX}
@@ -135,6 +288,8 @@ const TableDataSiswa = () => {
         siswaPerKelas={siswaPerKelasXI}
         page={pagePerXI}
         setPage={setPagePerXI}
+        statusSiswaPerTingkat={statusSiswaPerXI}
+        statusSiswaPerKelas={statusSiswaPerKelasXI}
         rowPerPage={rowsPerPageXI}
         setRowsPerPage={setRowsPerPageXI}
       />
@@ -144,6 +299,8 @@ const TableDataSiswa = () => {
         siswaPerKelas={siswaPerKelasXII}
         page={pagePerXII}
         setPage={setPagePerXII}
+        statusSiswaPerTingkat={statusSiswaPerXII}
+        statusSiswaPerKelas={statusSiswaPerKelasXII}
         rowPerPage={rowsPerPageXII}
         setRowsPerPage={setRowsPerPageXII}
       />
@@ -153,8 +310,10 @@ const TableDataSiswa = () => {
 
 interface SiswaTableProps {
   title: string;
-  siswa: any[]; // ✅ Tambahkan siswa sebagai prop
+  siswa: any[];
   siswaPerKelas: Record<string, number>;
+  statusSiswaPerTingkat: Record<string, number>;
+  statusSiswaPerKelas: Record<string, Record<string, number>>;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   rowPerPage: number;
@@ -166,19 +325,35 @@ function SiswaTable({
   siswa,
   page,
   setPage,
+  statusSiswaPerTingkat,
+  statusSiswaPerKelas,
   siswaPerKelas,
   rowPerPage,
   setRowsPerPage,
 }: SiswaTableProps) {
   const kelasList = Object.keys(siswaPerKelas);
+  console.log("perkelas", statusSiswaPerTingkat);
 
   return (
     <Paper>
       <TableContainer>
-        <Toolbar>
+        <Toolbar className="flex justify-between">
           <Typography sx={{ flex: "1 1 100%" }} variant="h6">
             {title}
           </Typography>
+          <div className="flex flex-nowrap gap-2">
+            <span className="bg-green-100 truncate text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm border-green-400">
+              {statusSiswaPerTingkat.ONLINE || 0} ONLINE
+            </span>
+            {" - "}
+            <span className="bg-yellow-100 truncate text-yellow-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm border border-yellow-300">
+              {statusSiswaPerTingkat.UJIAN || 0} ujian
+            </span>
+            {" - "}
+            <span className="bg-purple-100 truncate text-purple-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm border border-purple-400">
+              {statusSiswaPerTingkat.SELESAI_UJIAN || 0} Selesai
+            </span>
+          </div>
         </Toolbar>
         <Table>
           <TableHead>
@@ -186,6 +361,7 @@ function SiswaTable({
               <TableCell>No</TableCell>
               <TableCell>KELAS</TableCell>
               <TableCell>TOTAL</TableCell>
+              <TableCell>STATUS</TableCell>
               <TableCell>ACTIONS</TableCell>
             </TableRow>
           </TableHead>
@@ -205,6 +381,14 @@ function SiswaTable({
                     <TableCell>{page * rowPerPage + index + 1}</TableCell>
                     <TableCell>{kelas}</TableCell>
                     <TableCell>{siswaPerKelas[kelas]} total data</TableCell>
+                    <TableCell className="flex flex-nowrap gap-2">
+                      <span className="bg-yellow-100 truncate text-yellow-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm border border-yellow-300">
+                        {statusSiswaPerKelas[kelas]?.UJIAN || 0} ujian
+                      </span>
+                      <span className="bg-purple-100 truncate text-purple-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm border border-purple-400">
+                        {statusSiswaPerKelas[kelas]?.SELESAI_UJIAN || 0} selesai
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <FrameDataUsers
                         tingkat={kelas.split(" - ")[0]}

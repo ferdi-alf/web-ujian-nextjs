@@ -40,6 +40,15 @@ export default async function HalamanUjian(props: { params: Tparams }) {
       notFound();
     }
 
+    await prisma.siswaDetail.update({
+      where: {
+        userId: siswaDetail?.userId,
+      },
+      data: {
+        status: "UJIAN",
+      },
+    });
+
     const ujian = await prisma.ujian.findFirst({
       where: {
         mataPelajaran: {

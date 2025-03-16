@@ -36,6 +36,85 @@ export async function PUT(request: NextRequest, { params }: any) {
         { status: 404 }
       );
     }
+
+    if (status === "active") {
+      const activeUjianSameTingkat = await prisma.ujian.findFirst({
+        where: {
+          id: { not: params.id }, // Exclude current exam
+          status: "active",
+          mataPelajaran: {
+            tingkat: existingUjian.mataPelajaran.tingkat,
+          },
+        },
+      });
+
+      if (activeUjianSameTingkat) {
+        return NextResponse.json(
+          {
+            error: true,
+            message: `Sudah ada ujian aktif untuk tingkat ${existingUjian.mataPelajaran.tingkat}. Nonaktifkan ujian tersebut terlebih dahulu.`,
+            status: 400,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (
+      status === "active" ||
+      (existingUjian.status === "active" && status === "selesai")
+    ) {
+      // Ambil semua siswa dengan tingkat yang sama dengan mata pelajaran
+      const siswaSameTingkat = await prisma.siswaDetail.findMany({
+        where: {
+          kelas: {
+            tingkat: existingUjian.mataPelajaran.tingkat,
+          },
+        },
+        select: {
+          user: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      // Filter hanya siswa yang memiliki user (tidak null)
+      const userIds = siswaSameTingkat
+        .filter((siswa) => siswa.user !== null)
+        .map((siswa) => siswa.user.id);
+
+      if (userIds.length > 0) {
+        // Reset status siswa yang berada di halaman ujian ke ONLINE atau yang offline tetap OFFLINE
+        await prisma.$transaction(async (tx) => {
+          // Ambil status user saat ini untuk mengetahui mana yang offline
+          const users = await tx.user.findMany({
+            where: {
+              id: { in: userIds },
+            },
+            select: {
+              id: true,
+              status: true,
+            },
+          });
+
+          // Update status masing-masing user
+          for (const user of users) {
+            // Jika status UJIAN atau SELESAI_UJIAN, ubah ke ONLINE
+            // Jika status OFFLINE, biarkan tetap OFFLINE
+            if (user.status === "UJIAN" || user.status === "SELESAI_UJIAN") {
+              await tx.user.update({
+                where: { id: user.id },
+                data: { status: "ONLINE" },
+              });
+            }
+          }
+        });
+      }
+    }
+
     const updateUjian = await prisma.ujian.update({
       where: {
         id: params.id,

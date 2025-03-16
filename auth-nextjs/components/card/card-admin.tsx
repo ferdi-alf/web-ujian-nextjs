@@ -1,42 +1,97 @@
-import { BookAIcon, NotebookText, School, Users } from "lucide-react";
+"use client";
+import { BookAIcon, BookCheck, NotebookText, Users } from "lucide-react";
 import Card from "../fragments/card";
 import {
-  getTotalKelas,
   getTotalSiswa,
-  getTotalSoal,
   getTotalUjianActive,
+  getTotalSoal,
+  getTotalKelas,
 } from "@/lib/countCard";
+import { useEffect, useState } from "react";
+import { useSocket } from "@/lib/socketContext";
 
-const CardAdmin = async () => {
-  const totalSiswa = await getTotalSiswa();
-  const totalUjianActive = await getTotalUjianActive();
-  const totalSoal = await getTotalSoal();
-  const totalKelas = await getTotalKelas();
+const CardAdmin = () => {
+  const [totalSiswa, setTotalSiswa] = useState("Loading...");
+  const [totalUjianActive, setTotalUjianActive] = useState("Loading...");
+  const [totalSiswaUjian, setTotalSiswaUjian] = useState("Loading...");
+  const [totalSiswaSelesaiUjian, setTotalSiswaSelesaiUjian] =
+    useState("Loading...");
+  const { socket, isConnected } = useSocket();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const siswa = await getTotalSiswa();
+        const ujian = await getTotalUjianActive();
+        const siswaUjian = await getTotalSoal();
+        const siswaSelesai = await getTotalKelas();
+
+        setTotalSiswa(siswa.toString());
+        setTotalUjianActive(ujian.toString());
+        setTotalSiswaUjian(siswaUjian.toString());
+        setTotalSiswaSelesaiUjian(siswaSelesai.toString());
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Listen for realtime updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatusCount = (statusCounts: {
+      UJIAN: number;
+      SELESAI_UJIAN: number;
+    }) => {
+      console.log("Status count update:", statusCounts);
+      if (typeof statusCounts.UJIAN === "number") {
+        setTotalSiswaUjian(statusCounts.UJIAN.toString());
+      }
+      if (typeof statusCounts.SELESAI_UJIAN === "number") {
+        setTotalSiswaSelesaiUjian(statusCounts.SELESAI_UJIAN.toString());
+      }
+    };
+
+    socket.on("statusCountUpdate", handleStatusCount);
+
+    if (isConnected) {
+      console.log("Socket connected, requesting status counts");
+      socket.emit("requestStatusCount");
+    }
+
+    return () => {
+      socket.off("statusCountUpdate", handleStatusCount);
+    };
+  }, [socket, isConnected]);
+
   return (
     <>
       <Card
         title="Total Siswa"
         icon={Users}
-        data={totalSiswa.toString()}
+        data={totalSiswa}
         description="Total Data Siswa"
       />
       <Card
         title="Total Ujian Active"
         icon={BookAIcon}
-        data={totalUjianActive.toString()}
+        data={totalUjianActive}
         description="Total Ujian Active"
       />
       <Card
-        title="Total Soal"
+        title="Total Sedang Ujian"
         icon={NotebookText}
-        data={totalSoal.toString()}
-        description="Total Data Soal Ujian"
+        data={totalSiswaUjian}
+        description={isConnected ? "Real-time Data" : "Menunggu koneksi..."}
       />
       <Card
-        title="Total Kelas"
-        icon={School}
-        data={totalKelas.toString()}
-        description="Total Data Kelas"
+        title="Total Selesai Ujian"
+        icon={BookCheck}
+        data={totalSiswaSelesaiUjian}
+        description={isConnected ? "Real-time Data" : "Menunggu koneksi..."}
       />
     </>
   );

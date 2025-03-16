@@ -15,7 +15,7 @@ const Card: React.FC<CardProps> = ({
     <div className=" bg-white border border-gray-300 p-3 rounded-md">
       <div className="flex justify-between">
         <p className="font-semibold sm:text-lg text-sm">{title}</p>
-        <Icon className="text-gray-400" />
+        <Icon className="text-blue-400" />
       </div>
       <div className="flex flex-col mt-4">
         <p className="font-bold text-xl">{data}</p>

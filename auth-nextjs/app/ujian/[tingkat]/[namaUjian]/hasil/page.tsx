@@ -129,13 +129,13 @@ const HasilUjianClient = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="">
-          <div className="w-full max-w-md mx-auto text-center">
+          <div className="w-full max-w-md mx-auto text-center px-3">
             <DotLottieReact
               src="https://lottie.host/67b97ff7-a3d8-4f15-b98a-fead9a267e7f/Y3Nn8w6Uc8.lottie"
               loop={false}
               autoplay
             />
-            <div className="w-full bg-gray-200 rounded-full dark:bg-gray-700 h-6 relative overflow-hidden">
+            <div className="w-full bg-gray-200 rounded-full  h-6 relative overflow-hidden">
               <div
                 className="bg-blue-600 text-xs font-medium text-blue-100 text-center p-1 leading-none rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
@@ -162,7 +162,7 @@ const HasilUjianClient = () => {
 
           <div className="space-y-6">
             <div>
-              <div className="flex justify-between mb-2">
+              <div className="flex justify-around mb-2">
                 <span className="font-medium">Jawaban Benar</span>
                 <span className="font-medium">
                   {showResult ? (

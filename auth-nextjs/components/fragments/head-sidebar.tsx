@@ -38,7 +38,7 @@ const HeadSidebar = () => {
                 ? user.data.image // Gunakan gambar dari database
                 : user?.data.role === "PROKTOR" // Jika role adalah PROKTOR
                 ? "/avatar.png" // Tampilkan avatar default
-                : "/avatar-admin"
+                : "/avatar-admin.jpg"
             } // Fallback lainnya}
           />
         )}

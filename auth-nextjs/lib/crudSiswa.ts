@@ -132,6 +132,7 @@ export const getSiswa = async () => {
             role: true,
             username: true,
             image: true,
+            status: true,
           },
         },
       },

@@ -51,6 +51,7 @@ interface SiswaData {
     username: string;
     role: string;
     image: string;
+    status: string;
   };
 }
 
@@ -59,6 +60,13 @@ interface FrameDataUsersProps {
   jurusan: string;
   siswaList: SiswaData[];
 }
+
+const statusColors: Record<string, string> = {
+  OFFLINE: "bg-gray-100 text-gray-800 border-gray-500",
+  ONLINE: "bg-green-100 text-green-800 border-green-400 ",
+  UJIAN: "bg-yellow-100 text-yellow-800 border-yellow-400 ",
+  SELESAI_UJIAN: "bg-purple-100 text-purple-800 border-purple-400 ",
+};
 
 const FrameDataUsers = ({
   tingkat,
@@ -91,6 +99,7 @@ const FrameDataUsers = ({
 
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [siswaList, tingkat, jurusan, searchTerm]);
+  console.log("data", filteredSiswa);
 
   const { mutate } = useSWRConfig();
 
@@ -273,6 +282,7 @@ const FrameDataUsers = ({
                           <TableCell>No</TableCell>
                           <TableCell>Avatar</TableCell>
                           <TableCell>Nama</TableCell>
+                          <TableCell>Status</TableCell>
                           <TableCell>NIS</TableCell>
                           <TableCell>Ruang</TableCell>
                           <TableCell>Jenis Kelamin</TableCell>
@@ -314,6 +324,18 @@ const FrameDataUsers = ({
                                   />
                                 </TableCell>
                                 <TableCell>{siswa.name}</TableCell>
+                                <TableCell>
+                                  <span
+                                    className={`capitalize font-medium text-xs me-2 px-2.5 py-0.5 rounded-sm border ${
+                                      statusColors[siswa.userId.status] ||
+                                      "bg-gray-100 text-gray-800 border-gray-500 "
+                                    }`}
+                                  >
+                                    {siswa.userId?.status === "SELESAI_UJIAN"
+                                      ? "SELESAI"
+                                      : siswa.userId.status}
+                                  </span>
+                                </TableCell>
                                 <TableCell>{siswa.nis}</TableCell>
                                 <TableCell>{siswa.ruang}</TableCell>
                                 <TableCell>{siswa.kelamin}</TableCell>

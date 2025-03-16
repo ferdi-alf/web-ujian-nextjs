@@ -1,3 +1,5 @@
+"use server";
+
 import { prisma } from "@/lib/prisma";
 
 export async function getTotalSiswa() {
@@ -32,8 +34,12 @@ export async function getTotalUjianActive() {
 
 export async function getTotalSoal() {
   try {
-    const totalSoal = await prisma.mataPelajaran.count();
-    return totalSoal;
+    const totalSiswaUjian = await prisma.user.count({
+      where: {
+        status: "UJIAN",
+      },
+    });
+    return totalSiswaUjian;
   } catch (error) {
     console.error("Error mengammbil total soal", error);
     return 0;
@@ -42,8 +48,12 @@ export async function getTotalSoal() {
 
 export async function getTotalKelas() {
   try {
-    const totalKelas = await prisma.kelas.count();
-    return totalKelas;
+    const totalSiswaSelesai = await prisma.user.count({
+      where: {
+        status: "SELESAI_UJIAN",
+      },
+    });
+    return totalSiswaSelesai;
   } catch (error) {
     console.error("Error mengambil total kelas", error);
     return 0;
