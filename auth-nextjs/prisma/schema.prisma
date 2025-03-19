@@ -50,6 +50,7 @@ model User {
   sessions        Session[]
   siswaDetail     SiswaDetail?
   jurusan         String?
+  loginLogs       LoginLog[]
 
   @@map("users")
 }
@@ -60,6 +61,14 @@ enum UserStatus {
   ONLINE
   UJIAN
   SELESAI_UJIAN
+}
+
+
+model LoginLog {
+  id        String   @id @default(uuid())  
+  userId    String   @unique(map: "unique_user_per_day") // Satu log per hari
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginDate DateTime @default(now())  
 }
 
 

@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/socketContext.tsx
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
+import io, { Socket } from "socket.io-client";
+
+type Socket = any;
 
 // Definisikan tipe untuk context
 interface SocketContextType {

@@ -12,6 +12,7 @@ import {
   NotebookText,
   School,
   User,
+  UserCheck,
   UserCog,
   UserRoundPlus,
   UsersRound,
@@ -41,9 +42,9 @@ const items = [
     url: "#",
     icon: UsersRound,
     subItems: [
-      // Menambahkan sub-item untuk "Siswa"
       { title: "Tambah Siswa", url: "/tambah-siswa", icon: UserRoundPlus },
       { title: "Data Siswa", url: "/data-siswa", icon: User },
+      { title: "Kehadiran Siswa", url: "/kehadiran-siswa", icon: UserCheck },
     ],
   },
   {

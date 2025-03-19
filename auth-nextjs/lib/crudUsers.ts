@@ -120,6 +120,9 @@ export const deleteUsers = async (ids: string[]) => {
 };
 
 export const updateUsers = async (prevState: unknown, formData: FormData) => {
+  const apiUrl = process.env.NEXT_URL_API_URL || "http://localhost:3000";
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("authjs.session-token");
   try {
     const validateFields = UpdateUsersSchema.safeParse(
       Object.fromEntries(formData.entries())
@@ -131,16 +134,13 @@ export const updateUsers = async (prevState: unknown, formData: FormData) => {
       };
     }
 
-    const { id, username, role, kelasId, password } = validateFields.data;
-    const apiUrl = process.env.NEXT_URL_API_URL || "http://localhost:3000";
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("authjs.session-token");
+    const { id, username, role, jurusan, password } = validateFields.data;
 
     const bodyData = {
       id,
       username,
       role,
-      ...(kelasId && { kelasId }),
+      ...(jurusan && { jurusan }),
       ...(password && { password }),
     };
 

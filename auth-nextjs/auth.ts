@@ -8,7 +8,7 @@ import { compareSync } from "bcrypt-ts";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma) as any,
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: 6 * 60 * 60 },
   pages: {
     signIn: "/",
   },
@@ -37,6 +37,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const passwordMatch = compareSync(password, user.password);
 
         if (!passwordMatch) return null;
+        const todayWIB = new Date();
+        todayWIB.setUTCHours(17, 0, 0, 0); // 17:00 UTC = 00:00 WIB
+
+        const existingLog = await prisma.loginLog.findFirst({
+          where: {
+            userId: user.id,
+            loginDate: {
+              gte: todayWIB, // Bandingkan dengan WIB yang sudah di-reset ke 00:00
+            },
+          },
+        });
+
+        if (!existingLog) {
+          const loginDateWIB = new Date();
+          loginDateWIB.setHours(loginDateWIB.getHours() + 7); // Ubah dari UTC ke WIB
+
+          await prisma.loginLog.create({
+            data: {
+              userId: user.id,
+              loginDate: loginDateWIB, // Pastikan menyimpan dalam WIB
+            },
+          });
+        }
 
         await prisma.user.update({
           where: { id: user.id },

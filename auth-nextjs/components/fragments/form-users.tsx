@@ -11,17 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface KelasId {
-  id: string;
-  tingkat: string;
-  jurusan: string;
-}
-
 interface UserData {
   id: string;
   username: string;
   role: string;
-  kelasId?: KelasId;
+  jurusan?: string;
   image?: string;
 }
 
@@ -128,7 +122,7 @@ const FormInputUsers = ({
       {roleError && <p className="text-red-500">{roleError}</p>}
 
       {selectedRole === "PROKTOR" && (
-        <Select name="jurusan" defaultValue={initialData?.kelasId?.id}>
+        <Select name="jurusan" defaultValue={initialData?.jurusan}>
           <p className="mt-4 mb-2 text-start text-gray-500 text-sm">
             Harap pilih Jurusan menentukan Proktor
           </p>

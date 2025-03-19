@@ -7,19 +7,27 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(request: NextRequest, { params }: any) {
-  try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("authjs.session-token")?.value;
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("authjs.session-token")?.value;
 
-    if (!sessionCookie) {
+  if (!sessionCookie) {
+    return NextResponse.json(
+      { message: "No session token found" },
+      { status: 401 }
+    );
+  }
+  try {
+    const id = await params?.id;
+    if (!id) {
       return NextResponse.json(
-        { message: "No session token found" },
-        { status: 401 }
+        { message: "ID tidak ditemukan" },
+        { status: 400 }
       );
     }
 
     const body = await request.json();
     const validateFields = UpdateUsersSchema.safeParse(body);
+    console.log("Received data:", body);
 
     if (!validateFields.success) {
       return NextResponse.json(
@@ -31,38 +39,39 @@ export async function PUT(request: NextRequest, { params }: any) {
       );
     }
 
-    const { username, role, kelasId, password } = validateFields.data;
+    const { username, role, jurusan, password } = validateFields.data;
 
-    // Buat updateData terlebih dahulu
     const updateData: any = {
       username,
       role,
     };
 
-    // Cek kelasId jika ada
     if (role === "ADMIN") {
-      updateData.kelasId = null; // Set kelasId to null to remove the relation
-    } else if (kelasId) {
-      // Only check and update kelasId if role is not ADMIN
+      updateData.jurusan = null;
+    } else if (jurusan) {
+      const upperJurusan = jurusan ? jurusan.toUpperCase() : undefined;
+
       const existingKelas = await prisma.kelas.findFirst({
         where: {
-          id: kelasId,
+          jurusan: {
+            contains: upperJurusan,
+            mode: "insensitive",
+          },
         },
       });
-
       if (!existingKelas) {
         return NextResponse.json(
           {
-            message: "Kelas tidak ditemukan",
+            message: "Jurusan tidak ditemukan",
             error: {
-              kelasId: "ID kelas tidak valid",
+              jurusan: "Jurusan tidak valid",
             },
           },
           { status: 404 }
         );
       }
 
-      updateData.kelasId = kelasId;
+      updateData.jurusan = jurusan;
     }
 
     // Cek password jika ada dan bukan string kosong
@@ -72,7 +81,7 @@ export async function PUT(request: NextRequest, { params }: any) {
 
     const updateUser = await prisma.user.update({
       where: {
-        id: params.id,
+        id: id,
       },
       data: updateData,
     });

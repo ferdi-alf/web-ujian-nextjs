@@ -91,7 +91,6 @@ export async function PUT(request: NextRequest, { params }: any) {
             ? { password: await hash(password, 10) }
             : {}),
           role: "SISWA",
-          kelasId: existingSiswa.kelasId,
         },
       });
 
@@ -112,7 +111,11 @@ export async function PUT(request: NextRequest, { params }: any) {
               username: true,
               image: true,
               role: true,
-              kelasId: true,
+              siswaDetail: {
+                select: {
+                  kelasId: true,
+                },
+              },
             },
           },
           kelas: { select: { id: true, tingkat: true, jurusan: true } },

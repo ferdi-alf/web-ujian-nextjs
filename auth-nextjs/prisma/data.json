@@ -1,0 +1,100 @@
+[
+  {
+    "X": [
+      {
+        "X-RPL": [
+          {
+            "tanggal": "18-3-2025",
+            "hari": "Selesa",
+            "absen": [
+              {
+                "nama": "Andi",
+                "kelas": "X-RPL",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Budi",
+                "kelas": "X-RPL",
+                "keterangan": "Tidak Hadir"
+              },
+              {
+                "nama": "Caca",
+                "kelas": "X-RPL",
+                "keterangan": "Hadir"
+              }
+            ]
+          },
+          {
+            "tanggal": "19-3-2025",
+            "hari": "Rabu",
+            "absen": [
+              {
+                "nama": "Andi",
+                "kelas": "X-RPL",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Budi",
+                "kelas": "X-RPL",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Caca",
+                "kelas": "X-RPL",
+                "keterangan": "Hadir"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "X-TKJ": [
+          {
+            "tanggal": "18-3-2025",
+            "hari": "Selesa",
+            "absen": [
+              {
+                "nama": "Anton",
+                "kelas": "X-TKJ",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Beni",
+                "kelas": "X-TKJ",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Cici",
+                "kelas": "X-TKJ",
+                "keterangan": "Hadir"
+              }
+            ]
+          },
+          {
+            "tanggal": "19-3-2025",
+            "hari": "Rabu",
+            "absen": [
+              {
+                "nama": "Anton",
+                "kelas": "X-TKJ",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Beni",
+                "kelas": "X-TKJ",
+                "keterangan": "Hadir"
+              },
+              {
+                "nama": "Cici",
+                "kelas": "X-TKJ",
+                "keterangan": "Hadir"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "XI": [{}],
+    "XII": [{}]
+  }
+]

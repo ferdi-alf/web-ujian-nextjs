@@ -87,9 +87,7 @@ export async function PUT(request: NextRequest, { params }: any) {
         .map((siswa) => siswa.user.id);
 
       if (userIds.length > 0) {
-        // Reset status siswa yang berada di halaman ujian ke ONLINE atau yang offline tetap OFFLINE
         await prisma.$transaction(async (tx) => {
-          // Ambil status user saat ini untuk mengetahui mana yang offline
           const users = await tx.user.findMany({
             where: {
               id: { in: userIds },
@@ -100,10 +98,7 @@ export async function PUT(request: NextRequest, { params }: any) {
             },
           });
 
-          // Update status masing-masing user
           for (const user of users) {
-            // Jika status UJIAN atau SELESAI_UJIAN, ubah ke ONLINE
-            // Jika status OFFLINE, biarkan tetap OFFLINE
             if (user.status === "UJIAN" || user.status === "SELESAI_UJIAN") {
               await tx.user.update({
                 where: { id: user.id },

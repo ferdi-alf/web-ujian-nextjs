@@ -130,7 +130,7 @@ export const UpdateUsersSchema = z
     role: z.enum(["ADMIN", "PROKTOR"], {
       required_error: "Role harus dipilih",
     }),
-    kelasId: z.string().optional(),
+    jurusan: z.string().optional(),
     password: z
       .union([
         z.string().min(6, "Password minimal 6 karakter"),
@@ -141,10 +141,10 @@ export const UpdateUsersSchema = z
   .superRefine((data, ctx) => {
     if (
       data.role === "PROKTOR" &&
-      (!data.kelasId || data.kelasId.trim() === "")
+      (!data.jurusan || data.jurusan.trim() === "")
     ) {
       ctx.addIssue({
-        path: ["kelasId"],
+        path: ["jurusan"],
         message: "Kelas wajib dipilih untuk role Proktor",
         code: "custom",
       });

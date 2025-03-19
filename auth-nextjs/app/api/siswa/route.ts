@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
 
     const { kelasId, siswaData } = validateFields.data;
 
-    // Set batas maksimum menjadi 40
     const MAX_BATCH_SIZE = 40;
 
     if (siswaData.length > MAX_BATCH_SIZE) {
@@ -47,7 +46,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify kelas exists
     const existingKelas = await prisma.kelas.findUnique({
       where: {
         id: kelasId,
@@ -64,7 +62,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for existing usernames/nomor ujian - Optimasi dengan satu query
     const existingUsernames = await prisma.user.findMany({
       where: {
         username: {
@@ -99,7 +96,6 @@ export async function POST(request: NextRequest) {
         data: processedSiswaData.map((siswa) => ({
           username: siswa.nomorUjian,
           password: siswa.hashedPassword,
-          kelasId: kelasId,
           role: "SISWA",
         })),
       });
