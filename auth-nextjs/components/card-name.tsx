@@ -17,6 +17,8 @@ const CardName = async () => {
       })
     : null;
 
+  console.log(session);
+
   return (
     // <div className="p-2">
     <div className="p-8 mx-2 bg-white/30 rounded-lg inset-0 sm:w-3/5 shadow-lg max-w-md w-full">

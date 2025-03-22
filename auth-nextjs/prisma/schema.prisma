@@ -49,10 +49,21 @@ model User {
   accounts        Account[]
   sessions        Session[]
   siswaDetail     SiswaDetail?
-  jurusan         String?
   loginLogs       LoginLog[]
+  proktorDetail   ProktorDetail?
 
   @@map("users")
+}
+
+model ProktorDetail {
+  id     String @id @default(cuid())
+  userId String @unique
+  jurusan         String?
+  Nip            String?
+  name           String?
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("proktor_detail")
 }
 
 // Tambahkan enum untuk status

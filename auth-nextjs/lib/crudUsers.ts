@@ -81,6 +81,9 @@ export const getUsers = async () => {
           in: ["ADMIN", "PROKTOR"],
         },
       },
+      include: {
+        proktorDetail: true,
+      },
     });
 
     return admin;

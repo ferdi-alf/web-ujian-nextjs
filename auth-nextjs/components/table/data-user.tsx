@@ -34,8 +34,14 @@ interface UsersData {
   id: string;
   username: string;
   role: string;
-  jurusan?: string;
+  proktorDetail?: proktorDetailsProps;
   image?: string;
+}
+
+interface proktorDetailsProps {
+  id: string;
+  userId: string;
+  jurusan: string;
 }
 
 // Wrapper untuk getUsers yang bisa digunakan dengan SWR
@@ -60,6 +66,7 @@ export default function DataUsers() {
   // Menggunakan SWR dengan fungsi getUsers
   const { data: rawData, error, isLoading } = useSWR("users", fetchUsers);
   const { mutate } = useSWRConfig();
+  console.log(rawData);
 
   const { admins, proktors } = React.useMemo(() => {
     if (!rawData) return { admins: [], proktors: [] };
@@ -68,7 +75,7 @@ export default function DataUsers() {
       id: user.id,
       username: user.username || "",
       role: user.role,
-      jurusan: user.jurusan,
+      proktorDetail: user.proktorDetail,
       image: user.image || "",
     }));
 
@@ -267,7 +274,7 @@ function UserTable({
                     {title === "Data Akses Proktor" && (
                       <>
                         <TableCell className="truncate">
-                          {row.jurusan}
+                          {row.proktorDetail?.jurusan || ""}
                         </TableCell>
                       </>
                     )}

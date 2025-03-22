@@ -16,6 +16,7 @@ export async function PUT(request: NextRequest, { params }: any) {
       { status: 401 }
     );
   }
+
   try {
     const id = await params?.id;
     if (!id) {
@@ -40,17 +41,23 @@ export async function PUT(request: NextRequest, { params }: any) {
     }
 
     const { username, role, jurusan, password } = validateFields.data;
+    const upperJurusan = jurusan ? jurusan.toUpperCase() : undefined;
 
-    const updateData: any = {
-      username,
-      role,
-    };
+    // Check if the user exists and get current role
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      include: { proktorDetail: true },
+    });
 
-    if (role === "ADMIN") {
-      updateData.jurusan = null;
-    } else if (jurusan) {
-      const upperJurusan = jurusan ? jurusan.toUpperCase() : undefined;
+    if (!existingUser) {
+      return NextResponse.json(
+        { message: "User tidak ditemukan" },
+        { status: 404 }
+      );
+    }
 
+    // Validate jurusan if provided
+    if (upperJurusan) {
       const existingKelas = await prisma.kelas.findFirst({
         where: {
           jurusan: {
@@ -59,6 +66,7 @@ export async function PUT(request: NextRequest, { params }: any) {
           },
         },
       });
+
       if (!existingKelas) {
         return NextResponse.json(
           {
@@ -70,28 +78,64 @@ export async function PUT(request: NextRequest, { params }: any) {
           { status: 404 }
         );
       }
-
-      updateData.jurusan = jurusan;
     }
 
-    // Cek password jika ada dan bukan string kosong
+    // Handle ADMIN role (cannot have jurusan)
+    if (role === "ADMIN" && upperJurusan) {
+      return NextResponse.json(
+        {
+          error: true,
+          message:
+            "Admin tidak boleh memiliki jurusan. Jurusan hanya dimiliki Proktor",
+          status: 400,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Prepare user update data
+    const userUpdateData: any = { username, role };
+
     if (password && password.length > 0) {
-      updateData.password = await hash(password, 10);
+      userUpdateData.password = await hash(password, 10);
     }
 
-    const updateUser = await prisma.user.update({
-      where: {
-        id: id,
-      },
-      data: updateData,
+    // Use transaction to handle both user and proktorDetail updates
+    const result = await prisma.$transaction(async (tx) => {
+      // Update user data
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: userUpdateData,
+      });
+
+      // Handle proktorDetail based on role
+      if (role === "PROKTOR") {
+        // Check if proktorDetail exists
+        if (existingUser.proktorDetail) {
+          // Update existing proktorDetail
+          await tx.proktorDetail.update({
+            where: { userId: id },
+            data: {
+              jurusan: upperJurusan || existingUser.proktorDetail.jurusan,
+            },
+          });
+        } else {
+          // Create new proktorDetail
+          await tx.proktorDetail.create({
+            data: {
+              userId: id,
+              jurusan: upperJurusan || null,
+            },
+          });
+        }
+      }
+
+      return updatedUser;
     });
 
     revalidatePath("/users");
 
-    return NextResponse.json(
-      { success: true, data: updateUser },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
   } catch (error) {
     console.error("Error in PUT /api/user/[id]:", error);
     return NextResponse.json(
@@ -101,5 +145,7 @@ export async function PUT(request: NextRequest, { params }: any) {
       },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }

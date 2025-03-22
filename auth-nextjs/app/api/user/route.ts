@@ -82,6 +82,18 @@ export async function POST(request: NextRequest) {
     console.log("Data yang diterima:", validateFields.data);
     const hashedPassword = await hash(password, 10);
     const upperJurusan = jurusan ? jurusan.toUpperCase() : undefined;
+
+    if (upperJurusan && role === "ADMIN") {
+      return NextResponse.json(
+        {
+          error: true,
+          message:
+            "Admin tidak boleh memiliki jurusan. Jurusan hanya dimiliki Proktor",
+          status: 400,
+        },
+        { status: 400 }
+      );
+    }
     const existingKelas = await prisma.kelas.findFirst({
       where: {
         jurusan: {
@@ -102,18 +114,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Data yang dikirim ke Prisma:", {
-      username,
-      role,
-      jurusan: upperJurusan,
-      password: hashedPassword,
-    });
+    if (upperJurusan && role === "PROKTOR") {
+      const result = await prisma.$transaction(async (tx) => {
+        const newUsers = await tx.user.create({
+          data: {
+            username,
+            role,
+            password: hashedPassword,
+          },
+        });
+
+        const newProktorDetail = await tx.proktorDetail.create({
+          data: {
+            userId: newUsers.id,
+            jurusan: upperJurusan || null,
+          },
+        });
+
+        return { newUsers, newProktorDetail };
+      });
+
+      return NextResponse.json(
+        { success: true, data: result },
+        { status: 201 }
+      );
+    }
 
     const newUsers = await prisma.user.create({
       data: {
         username,
         role,
-        jurusan: upperJurusan,
         password: hashedPassword,
       },
     });
@@ -121,7 +151,10 @@ export async function POST(request: NextRequest) {
     if (!newUsers) {
       throw new Error("Gagal menambahkan user ke database");
     }
-    return NextResponse.json({ succes: true, data: newUsers }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: newUsers },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error in /api/user:", error);
     return NextResponse.json(

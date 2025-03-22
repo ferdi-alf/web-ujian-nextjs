@@ -15,8 +15,14 @@ interface UserData {
   id: string;
   username: string;
   role: string;
-  jurusan?: string;
+  proktorDetail?: proktorDetailsProps;
   image?: string;
+}
+
+interface proktorDetailsProps {
+  id: string;
+  userId: string;
+  jurusan: string;
 }
 
 const FormInputUsers = ({
@@ -122,7 +128,10 @@ const FormInputUsers = ({
       {roleError && <p className="text-red-500">{roleError}</p>}
 
       {selectedRole === "PROKTOR" && (
-        <Select name="jurusan" defaultValue={initialData?.jurusan}>
+        <Select
+          name="jurusan"
+          defaultValue={initialData?.proktorDetail?.jurusan}
+        >
           <p className="mt-4 mb-2 text-start text-gray-500 text-sm">
             Harap pilih Jurusan menentukan Proktor
           </p>

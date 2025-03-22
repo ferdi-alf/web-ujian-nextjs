@@ -19,18 +19,18 @@ import {
   showSuccessToast,
 } from "@/components/toast/ToastSuccess";
 
-interface KelasId {
-  id: string;
-  tingkat: string;
-  jurusan: string;
-}
-
 interface UserData {
   id: string;
   username: string;
   role: string;
-  kelasId?: KelasId;
   image?: string;
+  proktorDetail?: proktorDetailsProps;
+}
+
+interface proktorDetailsProps {
+  id: string;
+  userId: string;
+  jurusan: string;
 }
 
 const ModalUpdateUsers = ({ userData }: { userData: UserData }) => {
