@@ -372,3 +372,28 @@ export const submitUjianSchema = z.object({
 });
 
 export type SubmitUjianInput = z.infer<typeof submitUjianSchema>;
+
+export const AddBiodataSchema = z.object({
+  id: z.string().optional(), // ID tetap optional untuk update data
+  namaSekolah: z
+    .string()
+    .min(3, "Nama sekolah minimal 3 karakter")
+    .optional()
+    .or(z.literal("")), // Jika kosong, biarkan tanpa validasi
+  kepalaSekolah: z
+    .string()
+    .min(3, "Nama kepala sekolah minimal 3 karakter")
+    .optional()
+    .or(z.literal("")),
+  nipKepalaSekolah: z
+    .string()
+    .min(8, "NIP minimal 8 karakter")
+    .max(18, "NIP maksimal 18 karakter")
+    .optional()
+    .or(z.literal("")),
+  alamatSekolah: z
+    .string()
+    .min(5, "Alamat sekolah minimal 5 karakter")
+    .optional()
+    .or(z.literal("")),
+});

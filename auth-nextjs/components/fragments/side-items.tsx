@@ -11,6 +11,7 @@ import {
   NotebookPen,
   NotebookText,
   School,
+  University,
   User,
   UserCheck,
   UserCog,
@@ -26,6 +27,11 @@ const items = [
     title: "Dashboard",
     url: "/dashboard",
     icon: Home,
+  },
+  {
+    title: "Biodata Sekolah",
+    url: "/biodata-sekolah",
+    icon: University,
   },
   {
     title: "Kelas",

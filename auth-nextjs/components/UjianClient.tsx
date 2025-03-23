@@ -20,6 +20,7 @@ import { submitUjian } from "@/lib/crudUjian";
 import { showErrorToast } from "./toast/ToastSuccess";
 import useCheatingDetection from "./useCheatingDetection";
 import { useRouter } from "next/navigation";
+import { useFormStatus } from "react-dom";
 
 interface JawabanType {
   id: string;
@@ -44,6 +45,7 @@ interface UjianClientProps {
 
 const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
   const [state, formAction] = useActionState(submitUjian, null);
+  const { pending } = useFormStatus();
   console.log(state);
   const totalDetikAwal = ujian.waktuPengerjaan * 60; // Konversi menit ke detik
   const [sisaWaktu, setSisaWaktu] = useState(totalDetikAwal);
@@ -392,7 +394,6 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     formAction(newFormData);
   };
 
-  // Tunggu sampai randomizedSoal siap
   if (randomizedSoal.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -524,13 +525,18 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
             </PaginationContent>
           </Pagination>
         </div>
-
+        {pending ? (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+            {/* Loading spinner */}
+            <div className="w-16 h-16 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>
+          </div>
+        ) : null}
         {currentSoalIndex === totalSoal - 1 && (
           <button
             type="submit"
             className="w-full text-white bg-gradient-to-r mt-6 shadow-md from-cyan-500 to-blue-500 hover:bg-gradient-to-bl focus:ring-4 focus:outline-none focus:ring-cyan-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-2 mb-2"
           >
-            Kirim Jawaban
+            {pending ? "Loading..." : "Kirim Jawaban"}
           </button>
         )}
       </form>

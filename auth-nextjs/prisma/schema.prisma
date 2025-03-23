@@ -55,6 +55,15 @@ model User {
   @@map("users")
 }
 
+model BiodataSekolah {
+  id String @id @default(cuid())
+  namaSekolah String?
+  kepalaSekolah String?
+  NipKepalaSekolah String?
+  alamat String?
+  @@map("biodata_sekolah")
+}
+
 model ProktorDetail {
   id     String @id @default(cuid())
   userId String @unique
