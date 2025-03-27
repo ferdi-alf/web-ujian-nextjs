@@ -45,7 +45,9 @@ const AnalyticsComponents = () => {
           chartData={rawData.data.chartDataX}
         />
       ) : (
-        ""
+        <div className="w-full p-3 mt-3 rounded-lg bg-white">
+          <p>Belum ada data Analytics untuk tingkat X</p>
+        </div>
       )}
 
       {rawData.data.chartDataXI ? (
@@ -54,7 +56,9 @@ const AnalyticsComponents = () => {
           chartData={rawData.data.chartDataXI}
         />
       ) : (
-        ""
+        <div className="w-full mt-3 p-3 rounded-lg bg-white">
+          <p>Belum ada data Analytics untuk tingkat XI</p>
+        </div>
       )}
       {rawData.data.chartDataXII ? (
         <ChartUi
@@ -62,7 +66,9 @@ const AnalyticsComponents = () => {
           chartData={rawData.data.chartDataXII}
         />
       ) : (
-        ""
+        <div className="w-full mt-3 p-3 rounded-lg bg-white">
+          <p>Belum ada data Analytics untuk tingkat XI</p>
+        </div>
       )}
     </div>
   );

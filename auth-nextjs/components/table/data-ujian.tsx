@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useActionState, useEffect, useState } from "react";
+import React, {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Paper,
   Table,
@@ -35,6 +41,7 @@ import {
 import { Trash2Icon } from "lucide-react";
 import { FormButton } from "../button";
 import Swal from "sweetalert2";
+import ButtonDownloadBeritaAcara from "../DownloadBeritaAcara";
 
 interface UjianData {
   id: string;
@@ -44,6 +51,8 @@ interface UjianData {
     pelajaran: string;
   };
   token?: string;
+  jamMulai?: string;
+  jamSelesai?: string;
   waktuPengerjaan: number;
   status: string;
 }
@@ -52,6 +61,10 @@ interface UjianTableProps {
   title: string;
   data: UjianData[];
 }
+
+type ErrorObject = {
+  [key: string]: string[] | string | undefined;
+};
 
 const fetchUjian = async () => {
   try {
@@ -75,6 +88,8 @@ const DataUjian = () => {
       token: ujian.token || "-",
       waktuPengerjaan: ujian.waktuPengerjaan,
       status: ujian.status,
+      jamMulai: ujian.jamMulai,
+      jamSelesai: ujian.jamSelesai,
       mataPelajaran: {
         id: ujian.mataPelajaran.id,
         tingkat: ujian.mataPelajaran.tingkat,
@@ -124,21 +139,99 @@ function Row({ row }: { row: UjianData }) {
   const [state, formAction] = useActionState(updateUjian, null);
   console.log(state);
 
-  useEffect(() => {
-    if (state?.error) {
-      Object.entries(state.error).forEach(([field, messages]) => {
-        // Jika messages adalah array, tampilkan semua pesan errornya
-        if (Array.isArray(messages)) {
-          messages.forEach((msg) => showErrorToast(`${field}: ${msg}`));
-        } else {
-          showErrorToast(`${field}: ${messages}`);
-        }
+  const handleFormSubmit = async (formData: FormData) => {
+    const status = formData.get("status") as string;
+
+    // Check if status is being set to active
+    if (status === "active") {
+      const result = await Swal.fire({
+        icon: "info",
+        title: "Konfirmasi Aktivasi Ujian",
+        text: `Anda akan mengaktifkan ujian ${row.mataPelajaran.tingkat} - ${row.mataPelajaran.pelajaran} jam mulai dan jam selesai akan dihitung setelah mengaktivasi ujian ini`,
+        showCancelButton: true,
+        confirmButtonText: "Ya, Aktifkan",
+        cancelButtonText: "Batal",
+        reverseButtons: true,
       });
+
+      // If user cancels, stop form submission
+      if (!result.isConfirmed) {
+        return;
+      }
     }
 
-    if (state?.success && state?.message) {
-      showSuccessToast(state.message);
-      mutate("ujian");
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
+
+  const lastProcessedStateRef = useRef<{
+    success?: boolean;
+    error?: ErrorObject;
+    message?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // Function to check if the current state is different from the last processed state
+    const isStateDifferent = () => {
+      if (!lastProcessedStateRef.current && state) return true;
+
+      if (state?.success !== lastProcessedStateRef.current?.success)
+        return true;
+
+      if (state?.message !== lastProcessedStateRef.current?.message)
+        return true;
+
+      // Safe error comparison
+      const currentError = state?.error as ErrorObject | undefined;
+      const lastError = lastProcessedStateRef.current?.error;
+
+      // Compare error keys
+      const currentErrorKeys = currentError ? Object.keys(currentError) : [];
+      const lastErrorKeys = lastError ? Object.keys(lastError) : [];
+
+      if (currentErrorKeys.length !== lastErrorKeys.length) return true;
+
+      // Detailed error comparison
+      return currentErrorKeys.some((key) => {
+        const currentValue = currentError?.[key];
+        const lastValue = lastError?.[key];
+
+        // Convert to string for comparison, handling array and string types
+        const currentStringValue = Array.isArray(currentValue)
+          ? JSON.stringify(currentValue)
+          : currentValue;
+
+        const lastStringValue = Array.isArray(lastValue)
+          ? JSON.stringify(lastValue)
+          : lastValue;
+
+        return currentStringValue !== lastStringValue;
+      });
+    };
+
+    // Only process if the state is different
+    if (state && isStateDifferent()) {
+      // Handle errors
+      if (state?.error) {
+        const errorObj = state.error as ErrorObject;
+        Object.entries(errorObj).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            messages.forEach((msg) => showErrorToast(`${field}: ${msg}`));
+          } else if (typeof messages === "string") {
+            showErrorToast(`${field}: ${messages}`);
+          }
+        });
+      }
+
+      // Handle success
+      if (state?.success && state?.message) {
+        showSuccessToast(state.message);
+        mutate("ujian");
+      }
+
+      // Update the ref with the current processed state
+      lastProcessedStateRef.current = state;
     }
   }, [state]);
 
@@ -216,24 +309,31 @@ function Row({ row }: { row: UjianData }) {
         </TableCell>
 
         <TableCell align="center">{row.waktuPengerjaan} menit</TableCell>
-        <TableCell align="center">
+        <TableCell
+          align="center"
+          sx={{ display: "flex", flexWrap: "nowrap", gap: "8px" }}
+        >
           <button
             onClick={() => handleDelete(row)}
             className="rounded bg-gray-100 p-2 hover:bg-gray-300"
           >
             <Trash2Icon />
           </button>
+          <ButtonDownloadBeritaAcara />
         </TableCell>
       </TableRow>
       <TableRow>
-        <TableCell colSpan={5} style={{ paddingBottom: 0, paddingTop: 0 }}>
+        <TableCell colSpan={6} style={{ paddingBottom: 0, paddingTop: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box sx={{ margin: 1 }}>
               <p className="text-base font-light">
                 Detail Ujian {row.mataPelajaran.tingkat} {" - "}{" "}
                 {row.mataPelajaran.pelajaran}
               </p>
-              <form action={formAction} className="w-full mt-5">
+              <form
+                action={handleFormSubmit}
+                className="w-full mt-5 flex flex-col gap-y-4"
+              >
                 <input type="hidden" name="id" value={row.id} />
                 <div className="grid grid-cols-2 gap-2 ">
                   <div className="w-full">
@@ -283,8 +383,45 @@ function Row({ row }: { row: UjianData }) {
                   </div>
                 </div>
 
+                <div className=" grid grid-cols-2 gap-2 ">
+                  <div>
+                    <label
+                      htmlFor="start-time"
+                      className="block mb-2 text-sm font-medium text-gray-900 "
+                    >
+                      Jam Mulai:
+                    </label>
+                    <div className="relative">
+                      <input
+                        defaultValue={row.jamMulai || ""}
+                        type="time"
+                        id="start-time"
+                        name="jamMulai"
+                        className="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 "
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="end-time"
+                      className="block mb-2 text-sm font-medium text-gray-900 "
+                    >
+                      Jam Selesai:
+                    </label>
+                    <div className="relative">
+                      <input
+                        defaultValue={row.jamSelesai || ""}
+                        type="time"
+                        id="end-time"
+                        name="jamSelesai"
+                        className="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 "
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className=" mt-2 ">
-                  <label className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">
+                  <label className="mb-2 text-sm font-medium text-gray-900 sr-only ">
                     Token
                   </label>
                   <div className="relative">
@@ -333,7 +470,7 @@ function UjianTable({ title, data }: UjianTableProps) {
             <TableCell align="center">Token</TableCell>
             <TableCell align="center">Status</TableCell>
             <TableCell align="center">Waktu Pengerjaan</TableCell>
-            <TableCell align="center">Actions</TableCell>
+            <TableCell align="inherit">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>

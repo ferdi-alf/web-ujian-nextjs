@@ -344,22 +344,91 @@ export const AddUjian = object({
     }),
 });
 
-export const updateUjianSchema = object({
-  id: z.string().min(5, { message: "id tidak ada" }),
-  waktuPengerjaan: WaktuPengerjaanEnum.refine((val) => val !== undefined, {
-    message: "Waktu pengerjaan harus dipilih",
-  }),
-  status: StatusEnum.refine((val) => val !== undefined, {
-    message: "Status harus dipilih",
-  }),
-  token: z
-    .string()
-    .optional()
-    .refine((val) => !val || val.length >= 5, {
-      message: "Token harus memiliki minimal 5 karakter jika diisi",
-    }),
-});
+export const updateUjianSchema = z
+  .object({
+    id: z.string().min(5, { message: "ID tidak ada" }),
 
+    waktuPengerjaan: WaktuPengerjaanEnum.refine((val) => val !== undefined, {
+      message: "Waktu pengerjaan harus dipilih",
+    }),
+
+    status: StatusEnum.refine((val) => val !== undefined, {
+      message: "Status harus dipilih",
+    }),
+
+    token: z
+      .string()
+      .optional()
+      .refine((val) => !val || val.length >= 5, {
+        message: "Token harus memiliki minimal 5 karakter jika diisi",
+      }),
+
+    jamMulai: z
+      .string()
+      .optional()
+      .refine((val) => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), {
+        message: "Format jam mulai harus HH:mm",
+      }),
+
+    jamSelesai: z
+      .string()
+      .optional()
+      .refine((val) => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), {
+        message: "Format jam selesai harus HH:mm",
+      }),
+  })
+  // Refine to ensure both start and end times are provided together
+  .refine(
+    (data) => {
+      // If either start or end time is provided, both must be present
+      if (data.jamMulai || data.jamSelesai) {
+        return !!(data.jamMulai && data.jamSelesai);
+      }
+      return true;
+    },
+    {
+      message: "Jika salah satu waktu diisi, waktu lainnya juga harus diisi",
+      path: ["jamMulai", "jamSelesai"],
+    }
+  )
+  // Validate time order
+  .refine(
+    (data) => {
+      // Only validate if both times are provided
+      if (data.jamMulai && data.jamSelesai) {
+        const [startHour, startMinute] = data.jamMulai.split(":").map(Number);
+        const [endHour, endMinute] = data.jamSelesai.split(":").map(Number);
+
+        const startTime = startHour * 60 + startMinute;
+        const endTime = endHour * 60 + endMinute;
+
+        return endTime > startTime;
+      }
+      return true;
+    },
+    {
+      message: "Jam selesai harus lebih besar dari jam mulai",
+      path: ["jamSelesai"],
+    }
+  )
+  // Additional validation for active status
+  .refine(
+    (data) => {
+      // If status is active, both start and end times must be provided
+      if (data.status === "active") {
+        return !!(data.jamMulai && data.jamSelesai);
+      }
+      return true;
+    },
+    {
+      message:
+        "Sebelum mengaktifkan ujian, harap isi jam mulai dan jam selesai terlebih dahulu",
+      path: ["jamMulai", "jamSelesai"],
+    }
+  );
+
+// Type inference for TypeScript
+export type UpdateUjianInput = z.infer<typeof updateUjianSchema>;
 export const tokenSchema = z.object({
   token: z.string().min(1, { message: "token tidak boleh kosong" }),
 });

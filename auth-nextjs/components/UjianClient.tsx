@@ -390,7 +390,6 @@ const UjianClient = ({ ujian, soalData, siswaId }: UjianClientProps) => {
     // Tambahkan soalMapping untuk referensi saat penilaian
     newFormData.append("soalMapping", JSON.stringify(soalMapping));
 
-    // Panggil formAction dengan FormData yang sudah lengkap
     formAction(newFormData);
   };
 

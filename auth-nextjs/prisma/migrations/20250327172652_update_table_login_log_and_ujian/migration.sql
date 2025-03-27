@@ -1,0 +1,6 @@
+-- DropIndex
+DROP INDEX "unique_user_per_day";
+
+-- AlterTable
+ALTER TABLE "ujian" ADD COLUMN     "jamMulai" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "jamSelesai" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

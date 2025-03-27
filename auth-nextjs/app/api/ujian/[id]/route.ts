@@ -21,8 +21,14 @@ export async function PUT(request: NextRequest, { params }: any) {
       );
     }
 
-    const { status, waktuPengerjaan, token: examToken } = validateFields.data;
-
+    const {
+      status,
+      waktuPengerjaan,
+      jamMulai,
+      jamSelesai,
+      token: examToken,
+    } = validateFields.data;
+    console.log("data yg diterima:", validateFields.data);
     const existingUjian = await prisma.ujian.findUnique({
       where: { id: params.id },
       include: {
@@ -117,6 +123,8 @@ export async function PUT(request: NextRequest, { params }: any) {
       data: {
         waktuPengerjaan: parseInt(waktuPengerjaan),
         status: status,
+        jamMulai: jamMulai,
+        jamSelesai: jamSelesai,
         token: examToken,
       },
     });

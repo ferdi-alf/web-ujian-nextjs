@@ -38,20 +38,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!passwordMatch) return null;
         const todayWIB = new Date();
-        todayWIB.setUTCHours(17, 0, 0, 0); // 17:00 UTC = 00:00 WIB
+        todayWIB.setUTCHours(17, 0, 0, 0);
 
         const existingLog = await prisma.loginLog.findFirst({
           where: {
             userId: user.id,
             loginDate: {
-              gte: todayWIB, // Bandingkan dengan WIB yang sudah di-reset ke 00:00
+              gte: todayWIB,
             },
           },
         });
 
         if (!existingLog) {
           const loginDateWIB = new Date();
-          loginDateWIB.setHours(loginDateWIB.getHours() + 7); // Ubah dari UTC ke WIB
+          loginDateWIB.setHours(loginDateWIB.getHours() + 7);
 
           await prisma.loginLog.create({
             data: {
@@ -74,7 +74,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           ...user,
           username: user.username || "",
-          jurusan: user.jurusan || undefined,
         };
       },
     }),
@@ -173,7 +172,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = user.role;
         token.username = user.username;
         token.status = user.status;
-        token.jurusan = user.jurusan;
       }
       return token;
     },
@@ -181,7 +179,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = token.sub;
       session.user.role = token.role;
       session.user.username = token.username;
-      session.user.jurusan = token.jurusan as string;
+
       session.user.status = token.status as string;
       return session;
     },

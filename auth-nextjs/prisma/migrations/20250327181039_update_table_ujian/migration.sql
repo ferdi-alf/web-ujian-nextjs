@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ujian" ALTER COLUMN "jamMulai" SET DATA TYPE TEXT,
+ALTER COLUMN "jamSelesai" SET DATA TYPE TEXT;

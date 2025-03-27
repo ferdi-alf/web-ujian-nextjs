@@ -155,12 +155,23 @@ export const updateUjian = async (prevState: unknown, formData: FormData) => {
       };
     }
 
-    const { id, status, waktuPengerjaan, token } = validateFields.data;
+    const { id, status, waktuPengerjaan, jamMulai, jamSelesai, token } =
+      validateFields.data;
     console.log("Hasil Validasi:", validateFields.data);
 
     const url = process.env.NEXT_PUBLIC_API_URL;
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("authjs.session-token");
+
+    console.log(
+      "wkmw:",
+      id,
+      status,
+      waktuPengerjaan,
+      jamMulai,
+      jamSelesai,
+      token
+    );
 
     const response = await fetch(`${url}/api/ujian/${id}`, {
       method: "PUT",
@@ -168,7 +179,14 @@ export const updateUjian = async (prevState: unknown, formData: FormData) => {
         "Content-Type": "application/json",
         Cookie: `authjs.session-token=${sessionToken?.value}`,
       },
-      body: JSON.stringify({ id, status, waktuPengerjaan, token }),
+      body: JSON.stringify({
+        id,
+        status,
+        waktuPengerjaan,
+        jamMulai,
+        jamSelesai,
+        token,
+      }),
       credentials: "include",
     });
 

@@ -86,10 +86,11 @@ enum UserStatus {
 
 model LoginLog {
   id        String   @id @default(uuid())  
-  userId    String   @unique(map: "unique_user_per_day") // Satu log per hari
+  userId    String  
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   loginDate DateTime @default(now())  
 }
+
 
 
 
@@ -141,6 +142,8 @@ model Ujian {
   mataPelajaranId String
   token           String?       @unique
   waktuPengerjaan Int
+  jamMulai  String?
+  jamSelesai String?
   status          Status        @default(pending)
   hasil           Hasil[]
   kecurangan      Kecurangan[]

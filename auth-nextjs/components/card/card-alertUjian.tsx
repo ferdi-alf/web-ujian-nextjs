@@ -24,7 +24,8 @@ const AlertUjian = () => {
             Saat menambahkan daftar ujian{" "}
             <span className="font-normal">
               token boleh di kosongkan terlebih dahulu dan anda bisa
-              menambahkannya di action update
+              menambahkannya dengan menekan panah kebawah pada setaip baris
+              table
             </span>
           </li>
           <li className="font-normal">
