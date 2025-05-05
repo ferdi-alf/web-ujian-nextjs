@@ -6,6 +6,7 @@ import {
   ChartColumn,
   ChevronDown,
   ChevronRight,
+  Clock,
   Home,
   LibraryBig,
   NotebookPen,
@@ -37,6 +38,11 @@ const items = [
     title: "Kelas",
     url: "/kelas",
     icon: School,
+  },
+  {
+    title: "Jadwal Ujian",
+    url: "/jadwal-ujian",
+    icon: Clock,
   },
   {
     title: "Users",

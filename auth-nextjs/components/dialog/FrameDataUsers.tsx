@@ -180,7 +180,6 @@ const FrameDataUsers = ({
 
   return (
     <div>
-      {/* Tombol untuk membuka frame */}
       <button
         onClick={handleShowFrame}
         type="button"

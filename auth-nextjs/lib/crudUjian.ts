@@ -3,6 +3,7 @@
 
 import { auth } from "@/auth";
 import {
+  addJadwalUjianSchema,
   AddUjian,
   submitUjianSchema,
   tokenSchema,
@@ -450,3 +451,72 @@ export async function submitUjian(
     };
   }
 }
+
+export const addJadwalUjian = async (
+  prevState: unknown,
+  formData: FormData
+) => {
+  try {
+    const session = await auth();
+    if (
+      !session ||
+      (session.user?.role !== "ADMIN" && session.user?.role !== "SUPERADMIN")
+    ) {
+      return {
+        error: true,
+        message: "Unauthorized",
+        status: 403,
+      };
+    }
+    console.log("session pertama:", session, session.user.role);
+
+    const validateFields = addJadwalUjianSchema.safeParse(
+      Object.fromEntries(formData.entries())
+    );
+
+    if (!validateFields.success) {
+      return {
+        error: true,
+        error_field: validateFields.error.flatten().fieldErrors,
+      };
+    }
+    const { tingkat, jumlahSesi, tanggal } = validateFields.data;
+    const url = process.env.NEXT_PUBLIC_API_URL;
+
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("authjs.session-token");
+    console.log("cookie:", cookieStore);
+    console.log("session Cookie:", sessionCookie);
+
+    const response = await fetch(`${url}/api/jadwal-ujian`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `authjs.session-token=${sessionCookie?.value}`,
+      },
+      body: JSON.stringify({
+        tingkat,
+        jumlahSesi,
+        tanggal,
+      }),
+      credentials: "include",
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      return {
+        error: true,
+        message: responseData.message || "Gagal menambahkan data ujian",
+        status: response.status,
+      };
+    } else if (responseData) {
+      return {
+        success: true,
+        message: responseData.message,
+      };
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};

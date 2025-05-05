@@ -377,7 +377,6 @@ export const updateUjianSchema = z
         message: "Format jam selesai harus HH:mm",
       }),
   })
-  // Refine to ensure both start and end times are provided together
   .refine(
     (data) => {
       // If either start or end time is provided, both must be present
@@ -391,10 +390,8 @@ export const updateUjianSchema = z
       path: ["jamMulai", "jamSelesai"],
     }
   )
-  // Validate time order
   .refine(
     (data) => {
-      // Only validate if both times are provided
       if (data.jamMulai && data.jamSelesai) {
         const [startHour, startMinute] = data.jamMulai.split(":").map(Number);
         const [endHour, endMinute] = data.jamSelesai.split(":").map(Number);
@@ -465,4 +462,18 @@ export const AddBiodataSchema = z.object({
     .min(5, "Alamat sekolah minimal 5 karakter")
     .optional()
     .or(z.literal("")),
+});
+
+export const JumlahSesiEnum = z.enum(["1", "2", "3"], {
+  required_error: "jumlah sesi tidak valid, pilih antara 1 sampai 3 sesi",
+});
+
+export const addJadwalUjianSchema = z.object({
+  tingkat: TingkatEnum,
+  jumlahSesi: JumlahSesiEnum,
+  tanggal: z.coerce.date({
+    errorMap: () => ({
+      message: "Tanggal jadwal ujian wajib diisi dan harus valid",
+    }),
+  }),
 });

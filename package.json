@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/x-date-pickers": "^8.2.0",
+    "dayjs": "^1.11.13"
+  }
+}

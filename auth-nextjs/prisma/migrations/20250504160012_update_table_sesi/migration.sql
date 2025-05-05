@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "sesi" ALTER COLUMN "jamMulai" DROP NOT NULL,
+ALTER COLUMN "jamSelesai" DROP NOT NULL;

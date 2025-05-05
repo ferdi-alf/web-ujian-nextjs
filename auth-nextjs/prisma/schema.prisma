@@ -93,8 +93,6 @@ model LoginLog {
 
 
 
-
-
 model Kelas {
   id          String        @id @default(cuid())
   tingkat     Tingkat
@@ -136,6 +134,34 @@ model MataPelajaran {
 
   @@map("mata_pelajaran")
 }
+enum Tingkat {
+  X
+  XI
+  XII
+}
+
+model Jadwal {
+  id        String   @id @default(cuid())
+  tanggal   DateTime
+  tingkat   Tingkat
+  sesi      Sesi[]   // satu jadwal bisa punya banyak sesi
+
+  @@map("jadwal")
+}
+
+model Sesi {
+  id             String    @id @default(cuid())
+  sesi           Int       // misal 1, 2, dst
+  jamMulai   String?   // ← jadikan nullable
+  jamSelesai String?
+  jadwalId       String
+  jadwal         Jadwal    @relation(fields: [jadwalId], references: [id], onDelete: Cascade)
+  ujian          Ujian[]   @relation("SesiUjian")
+
+
+  @@map("sesi")
+}
+
 
 model Ujian {
   id              String        @id @default(cuid())
@@ -145,6 +171,8 @@ model Ujian {
   jamMulai  String?
   jamSelesai String?
   status          Status        @default(pending)
+  sesiId          String?        // optional
+  sesi            Sesi?          @relation("SesiUjian", fields: [sesiId], references: [id], onDelete: SetNull)
   hasil           Hasil[]
   kecurangan      Kecurangan[]
   mataPelajaran   MataPelajaran @relation(fields: [mataPelajaranId], references: [id], onDelete: Cascade)
@@ -230,11 +258,7 @@ enum Kelamin {
   P
 }
 
-enum Tingkat {
-  X
-  XI
-  XII
-}
+
 
 enum Status {
   pending

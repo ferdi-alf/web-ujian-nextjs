@@ -110,3 +110,46 @@ export async function DELETE(req: NextRequest, { params }: any) {
     );
   }
 }
+
+export async function GET(request: NextRequest, { params }: any) {
+  const idJadwal = params.id;
+  console.log("idJadwal", idJadwal);
+
+  const jadwal = await prisma.jadwal.findUnique({
+    where: { id: idJadwal },
+    include: {
+      sesi: {
+        include: {
+          ujian: true,
+        },
+      },
+    },
+  });
+  console.log("jadwal", jadwal);
+
+  if (!jadwal) {
+    return NextResponse.json({ error: "Jadwal not found" }, { status: 404 });
+  }
+
+  const tingkat = jadwal.tingkat;
+
+  const usedMataPelajaranIds = new Set(
+    jadwal.sesi.flatMap((s) => s.ujian.map((u) => u.mataPelajaranId))
+  );
+
+  const available = await prisma.mataPelajaran.findMany({
+    where: {
+      tingkat,
+      id: {
+        notIn: Array.from(usedMataPelajaranIds),
+      },
+    },
+    select: {
+      id: true,
+      tingkat: true,
+      pelajaran: true,
+    },
+  });
+
+  return NextResponse.json(available);
+}

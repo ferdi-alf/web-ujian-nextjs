@@ -172,7 +172,6 @@ function Row({ row }: { row: UjianData }) {
   } | null>(null);
 
   useEffect(() => {
-    // Function to check if the current state is different from the last processed state
     const isStateDifferent = () => {
       if (!lastProcessedStateRef.current && state) return true;
 
@@ -351,11 +350,6 @@ function Row({ row }: { row: UjianData }) {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    {/* {errors?.waktuPengerjaan && (
-                      <p className="text-red-500 text-start text-sm mt-1">
-                        {errors.waktuPengerjaan[0]}
-                      </p>
-                    )} */}
                   </div>
                   <div className="w-full">
                     <p className="font-medium ">Waktu pengerjaan </p>
