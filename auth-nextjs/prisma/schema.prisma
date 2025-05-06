@@ -162,12 +162,11 @@ model Sesi {
   @@map("sesi")
 }
 
-
 model Ujian {
   id              String        @id @default(cuid())
   mataPelajaranId String
   token           String?       @unique
-  waktuPengerjaan Int
+  waktuPengerjaan Int?
   jamMulai  String?
   jamSelesai String?
   status          Status        @default(pending)

@@ -25,6 +25,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
 import { FormButton } from "../button";
 import ModalAddUjianToSesi from "../dialog/ModalAddUjianToSesi";
+import "dayjs/locale/id";
 
 export interface JadwalData {
   id: string;
@@ -67,8 +68,6 @@ const DataJadwal = () => {
     return res.json();
   });
 
-  console.log("data", rawData);
-
   if (isLoading) {
     return <TableLoading />;
   }
@@ -99,37 +98,148 @@ function UjianTable({
   sesi,
   tanggal,
   idJadwal,
+  editMode,
 }: {
   sesi: JadwalData["sesi"];
   tanggal: string;
   idJadwal: string;
+  editMode: boolean;
 }) {
+  console.log("sesi", sesi);
+
   const semuaMapel = Array.from(
     new Set(sesi.flatMap((s) => s.ujian.map((u) => u.mataPelajaran)))
-  );
+  ).map((mataPelajaran) => ({ mataPelajaran }));
+
+  // State untuk menyimpan waktu ujian
+  const [ujianTimes, setUjianTimes] = useState<{
+    [ujianId: string]: {
+      jamMulai: Dayjs | null;
+      jamSelesai: Dayjs | null;
+    };
+  }>({});
+
+  // Inisialisasi ujianTimes dari data sesi
+  useEffect(() => {
+    const initialTimes: {
+      [ujianId: string]: {
+        jamMulai: Dayjs | null;
+        jamSelesai: Dayjs | null;
+      };
+    } = {};
+
+    sesi.forEach((s) => {
+      s.ujian.forEach((u) => {
+        if (u.id) {
+          initialTimes[u.id] = {
+            jamMulai: u.jamMulai ? dayjs(u.jamMulai, "HH:mm") : null,
+            jamSelesai: u.jamSelesai ? dayjs(u.jamSelesai, "HH:mm") : null,
+          };
+        }
+      });
+    });
+
+    setUjianTimes(initialTimes);
+  }, [sesi]);
+
+  const handleStartTimeChange = (ujianId: string, newValue: Dayjs | null) => {
+    if (!ujianId) return;
+
+    setUjianTimes((prev) => ({
+      ...prev,
+      [ujianId]: {
+        ...(prev[ujianId] || { jamSelesai: null }),
+        jamMulai: newValue,
+      },
+    }));
+  };
+
+  const handleEndTimeChange = (ujianId: string, newValue: Dayjs | null) => {
+    if (!ujianId) return;
+
+    setUjianTimes((prev) => ({
+      ...prev,
+      [ujianId]: {
+        ...(prev[ujianId] || { jamMulai: null }),
+        jamSelesai: newValue,
+      },
+    }));
+  };
 
   return (
-    <div className="flex  justify-end">
+    <div className="flex  items-end  justify-end flex-col mt-2">
       <ModalAddUjianToSesi tanggal={tanggal} idJadwal={idJadwal} />
-      <div className="w-11/12 ">
+      <div className="w-full">
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Mata Pelajaran</TableCell>
               {sesi.map((s) => (
-                <TableCell key={s.id}>Sesi {s.sesi}</TableCell>
+                <TableCell align="center" key={s.id}>
+                  Sesi {s.sesi}
+                </TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {semuaMapel.map((mapel) => (
-              <TableRow key={mapel}>
-                <TableCell>{mapel}</TableCell>
+              <TableRow key={mapel.mataPelajaran}>
+                <TableCell>{mapel.mataPelajaran}</TableCell>
                 {sesi.map((s) => {
-                  const ujian = s.ujian.find((u) => u.mataPelajaran === mapel);
+                  const ujian = s.ujian.find(
+                    (u) => u.mataPelajaran === mapel.mataPelajaran
+                  );
                   return (
-                    <TableCell key={s.id}>
-                      {ujian ? `${ujian.jamMulai} - ${ujian.jamSelesai}` : "-"}
+                    <TableCell align="center" key={s.id}>
+                      {ujian ? (
+                        <div className="flex flex-col gap-2">
+                          <div>
+                            {!ujian.jamMulai || editMode ? (
+                              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <MobileTimePicker
+                                  label="Jam Mulai"
+                                  value={
+                                    ujianTimes[ujian.id || ""]?.jamMulai || null
+                                  }
+                                  onChange={(newValue) => {
+                                    handleStartTimeChange(
+                                      ujian.id || "",
+                                      newValue
+                                    );
+                                  }}
+                                  ampm={false}
+                                />
+                              </LocalizationProvider>
+                            ) : (
+                              <span>Mulai: {ujian.jamMulai}</span>
+                            )}
+                          </div>
+                          <div>
+                            {!ujian.jamSelesai || editMode ? (
+                              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <MobileTimePicker
+                                  label="Jam Selesai"
+                                  value={
+                                    ujianTimes[ujian.id || ""]?.jamSelesai ||
+                                    null
+                                  }
+                                  onChange={(newValue) => {
+                                    handleEndTimeChange(
+                                      ujian.id || "",
+                                      newValue
+                                    );
+                                  }}
+                                  ampm={false}
+                                />
+                              </LocalizationProvider>
+                            ) : (
+                              <span>Selesai: {ujian.jamSelesai}</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                   );
                 })}
@@ -151,7 +261,6 @@ function Row({ row }: { row: JadwalData }) {
       jamSelesai: Dayjs | null;
     };
   }>({});
-  console.log(row.id);
 
   useEffect(() => {
     const intialTimes: {
@@ -210,7 +319,7 @@ function Row({ row }: { row: JadwalData }) {
           </IconButton>
         </TableCell>
         <TableCell align="center">
-          {new Date(row.tanggal).toLocaleDateString("id-ID")}
+          {dayjs(row.tanggal).locale("id").format("D MMMM YYYY")}
         </TableCell>
         <TableCell align="center">{row.jumlahUjian}</TableCell>
         <TableCell align="center">
@@ -227,7 +336,7 @@ function Row({ row }: { row: JadwalData }) {
               <div className="flex justify-between items-center">
                 <p className="text-base font-light">
                   Detail Jadwal ujian Tanggal{" "}
-                  {new Date(row.tanggal).toLocaleDateString("id-ID")}
+                  {dayjs(row.tanggal).locale("id").format("D MMMM YYYY")}
                 </p>
                 <Tooltip onClick={handleClickEditMode} title="Edit Mode" arrow>
                   <button
@@ -237,70 +346,101 @@ function Row({ row }: { row: JadwalData }) {
                   </button>
                 </Tooltip>
               </div>
-              <form action={""}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell align="center">Sesi</TableCell>
-                      <TableCell align="center">Jam Mulai</TableCell>
-                      <TableCell align="center">Jam Selesai</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {row.sesi.map((sesiRow) => (
-                      <TableRow key={sesiRow.id}>
-                        <TableCell align="center">
-                          Sesi {sesiRow.sesi}
-                        </TableCell>
-                        <TableCell align="center">
-                          {!sesiRow.jamMulai || editMode ? (
-                            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                              <MobileTimePicker
-                                label="Pilih Jam"
-                                value={sesiTimes[sesiRow.id]?.jamMulai}
-                                onChange={(newValue) =>
-                                  handleStartTimeChange(sesiRow.id, newValue)
-                                }
-                                ampm={false}
-                              />
-                            </LocalizationProvider>
-                          ) : (
-                            sesiRow.jamMulai
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          {!sesiRow.jamSelesai || editMode ? (
-                            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                              <MobileTimePicker
-                                label="Pilih Jam"
-                                value={sesiTimes[sesiRow.id]?.jamSelesai}
-                                onChange={(newValue) => {
-                                  handleEndTimChange(sesiRow.id, newValue);
-                                }}
-                                ampm={false}
-                              />
-                            </LocalizationProvider>
-                          ) : (
-                            sesiRow.jamSelesai
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <UjianTable
-                  sesi={row.sesi}
-                  tanggal={row.tanggal}
-                  idJadwal={row.id}
-                />
-                {editMode && (
-                  <div className="w-full flex justify-end">
-                    <div className="max-w-md">
-                      <FormButton />
+              <div className="relative">
+                <form onSubmit={handleSavedChange}>
+                  {/* Tabel Sesi (Parent) dengan border kiri */}
+                  <div className="border-l-4 border-blue-500 pl-4 mb-6 relative">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell align="center">Sesi</TableCell>
+                          <TableCell align="center">Jam Mulai</TableCell>
+                          <TableCell align="center">Jam Selesai</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {row.sesi.map((sesiRow) => (
+                          <TableRow key={sesiRow.id}>
+                            <TableCell align="center">
+                              Sesi {sesiRow.sesi}
+                            </TableCell>
+                            <TableCell align="center">
+                              {!sesiRow.jamMulai || editMode ? (
+                                <LocalizationProvider
+                                  dateAdapter={AdapterDayjs}
+                                >
+                                  <MobileTimePicker
+                                    label="Pilih Jam"
+                                    value={sesiTimes[sesiRow.id]?.jamMulai}
+                                    onChange={(newValue) =>
+                                      handleStartTimeChange(
+                                        sesiRow.id,
+                                        newValue
+                                      )
+                                    }
+                                    ampm={false}
+                                  />
+                                </LocalizationProvider>
+                              ) : (
+                                sesiRow.jamMulai
+                              )}
+                            </TableCell>
+                            <TableCell align="center">
+                              {!sesiRow.jamSelesai || editMode ? (
+                                <LocalizationProvider
+                                  dateAdapter={AdapterDayjs}
+                                >
+                                  <MobileTimePicker
+                                    label="Pilih Jam"
+                                    value={sesiTimes[sesiRow.id]?.jamSelesai}
+                                    onChange={(newValue) => {
+                                      handleEndTimChange(sesiRow.id, newValue);
+                                    }}
+                                    ampm={false}
+                                  />
+                                </LocalizationProvider>
+                              ) : (
+                                sesiRow.jamSelesai
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Flex container untuk UjianTable di kanan dengan border L menghubungkan */}
+                  <div className="relative">
+                    {/* Border yang menghubungkan parent-child */}
+                    <div className="absolute left-0 top-[-24px] h-8 w-6 border-l-4 border-blue-500"></div>
+                    <div
+                      className="absolute left-0 top-[-6px] h-4 border-b-4 border-blue-500"
+                      style={{ width: "calc(11% - 9px)" }}
+                    ></div>
+
+                    <div className="flex justify-end">
+                      <div className="w-[90%]">
+                        <div className="border-l-4 border-blue-500 pl-4">
+                          <UjianTable
+                            editMode={editMode}
+                            sesi={row.sesi}
+                            tanggal={row.tanggal}
+                            idJadwal={row.id}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                )}
-              </form>
+
+                  {editMode && (
+                    <div className="w-full flex justify-end mt-4">
+                      <div className="max-w-md">
+                        <FormButton />
+                      </div>
+                    </div>
+                  )}
+                </form>
+              </div>
             </Box>
           </Collapse>
         </TableCell>

@@ -100,6 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         "/dashboard",
         "/kelas",
         "/users",
+        "/jadwal-ujian",
         "/tambah-siswa",
         "/data-siswa",
         "/tambah-soal",

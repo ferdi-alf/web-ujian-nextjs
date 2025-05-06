@@ -18,7 +18,6 @@ import { mutate } from "swr";
 const ModalJadwalUjian = () => {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(addJadwalUjian, null);
-  console.log("wkwk", state);
   useEffect(() => {
     console.log("current", state);
     if (state && state.success === true) {

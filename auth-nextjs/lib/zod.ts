@@ -477,3 +477,12 @@ export const addJadwalUjianSchema = z.object({
     }),
   }),
 });
+
+export const addUjianToSesiSchema = z.object({
+  mataPelajaranIds: z.array(
+    z.string({
+      message: "Pilih setidaknya 1 ujian untuk di tambahkan",
+    })
+  ),
+  idJadwal: z.string(),
+});

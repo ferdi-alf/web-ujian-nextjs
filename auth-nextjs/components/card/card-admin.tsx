@@ -28,8 +28,8 @@ const CardAdmin = () => {
 
         setTotalSiswa(siswa.toString());
         setTotalUjianActive(ujian.toString());
-        setTotalSiswaUjian(siswaUjian.toString());
-        setTotalSiswaSelesaiUjian(siswaSelesai.toString());
+        setTotalSiswaUjian(siswaUjian.toString() || "");
+        setTotalSiswaSelesaiUjian(siswaSelesai.toString() || "");
       } catch (error) {
         console.error("Error fetching initial data:", error);
       }
@@ -38,7 +38,6 @@ const CardAdmin = () => {
     fetchData();
   }, []);
 
-  // Listen for realtime updates
   useEffect(() => {
     if (!socket) return;
 

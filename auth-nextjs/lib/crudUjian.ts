@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import {
   addJadwalUjianSchema,
   AddUjian,
+  addUjianToSesiSchema,
   submitUjianSchema,
   tokenSchema,
   updateUjianSchema,
@@ -485,8 +486,6 @@ export const addJadwalUjian = async (
 
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get("authjs.session-token");
-    console.log("cookie:", cookieStore);
-    console.log("session Cookie:", sessionCookie);
 
     const response = await fetch(`${url}/api/jadwal-ujian`, {
       method: "POST",
@@ -518,5 +517,72 @@ export const addJadwalUjian = async (
     }
   } catch (error) {
     console.log(error);
+  }
+};
+
+export const addUjianToSesi = async (
+  prevState: unknown,
+  formData: FormData
+) => {
+  const mataPelajaranIds = formData.getAll("mataPelajaranIds") as string[];
+  const idJadwal = formData.get("idJadwal") as string;
+  console.log("FormData keys:", Array.from(formData.keys()));
+
+  const parsed = addUjianToSesiSchema.safeParse({ mataPelajaranIds, idJadwal });
+
+  if (!parsed.success) {
+    return {
+      error: true,
+      error_field: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const session = await auth();
+  if (
+    !session ||
+    (session.user?.role !== "ADMIN" && session.user?.role !== "SUPERADMIN")
+  ) {
+    return {
+      error: true,
+      message: "Unauthorized",
+      status: 403,
+    };
+  }
+
+  console.log("data yg dikirm ke API", JSON.stringify(parsed.data));
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("authjs.session-token");
+
+  try {
+    const url = process.env.NEXT_PUBLIC_API_URL;
+    const res = await fetch(`${url}/api/ujian/add-to-sesi`, {
+      method: "POST",
+      body: JSON.stringify(parsed.data),
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `authjs.session-token=${sessionCookie?.value}`,
+      },
+      credentials: "include",
+    });
+
+    const result = await res.json();
+
+    if (!result.ok) {
+      return {
+        error: true,
+        message: result.message,
+      };
+    }
+
+    return {
+      success: true,
+      message: result.message,
+    };
+  } catch (error) {
+    return {
+      error: true,
+      message:
+        error instanceof Error ? error.message : "An unknown error occurred",
+    };
   }
 };
