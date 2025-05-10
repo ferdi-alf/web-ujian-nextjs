@@ -570,13 +570,13 @@ export const addUjianToSesi = async (
     if (!result.ok) {
       return {
         error: true,
-        message: result.message,
+        error_message: result.message,
       };
     }
 
     return {
       success: true,
-      message: result.message,
+      success_message: result.message,
     };
   } catch (error) {
     return {

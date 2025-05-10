@@ -19,6 +19,7 @@ import {
 } from "@/components/toast/ToastSuccess";
 import FormInputUjian from "../fragments/form-ujian";
 import { addUjian } from "@/lib/crudUjian";
+import { Typography } from "@mui/material";
 
 const ModalInputUjian = () => {
   const [state, formAction] = useActionState(addUjian, null);
@@ -36,7 +37,9 @@ const ModalInputUjian = () => {
     <Dialog>
       <div className="mt-3 w-full flex justify-end">
         <DialogTrigger className="p-2 font-medium  shadow-md rounded-md text-base text-white bg-blue-500">
-          Tambah Ujian +
+          <Typography variant="button" sx={{ display: "block" }}>
+            Tambah Ujian +
+          </Typography>
         </DialogTrigger>
       </div>
       <DialogContent className="w-11/12 rounded-sm bg-white">

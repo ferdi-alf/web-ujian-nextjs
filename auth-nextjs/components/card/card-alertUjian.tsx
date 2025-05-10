@@ -14,28 +14,39 @@ const AlertUjian = () => {
         <ul className="list-disc text-sm pl-4">
           <li className="font-medium">
             Daftar Ujian akan di kelompokkan,{" "}
-            <span className="font-normal">berdasarkan tingkat X XI XII.</span>
-          </li>
-          <li className="font-medium">
-            Soal-soal ujian didapatkan dari matara pelajaran,{" "}
-            <span className="font-normal">yang telah di tambahkan.</span>
-          </li>
-          <li className="font-medium">
-            Saat menambahkan daftar ujian{" "}
             <span className="font-normal">
-              token boleh di kosongkan terlebih dahulu dan anda bisa
-              menambahkannya dengan menekan panah kebawah pada setaip baris
-              table
+              berdasarkan tingkat X XI XII dan ini bersifat realtime.
             </span>
+          </li>
+          <li className="font-medium">
+            Soal-soal ujian didapatkan dari jadwal ujian{" "}
+            <span className="font-normal">yang sudah ditetapkan.</span>
+          </li>
+          <li className="font-medium">
+            Jika sudah menambahkan jadwal ujian, data ujian akan otomatis masuk
+            1 jam sebelum ujian dimulai{" "}
+          </li>
+          <li className="font-normal">
+            Harap jangan mengubah status ujian. Status Ujian akan otomatis
+            berubah status Pending, Aktif atau Selesai secara Realtime{" "}
+            <span className="font-medium">
+              sesuai dengan jam yang telah ditentukan pada ujian.
+            </span>{" "}
+            Dilakukan hanya jika ada siswa yang ketinggalan ujian
+          </li>
+          <li className="font-normal">
+            Harap untuk tidak menambahkan ujian secara manual pada{" "}
+            <span className="font-medium">&quot;Tambah Ujian +.&quot; </span>{" "}
+            Dilakukan hanya jika ada siswa yang ketinggalan ujian
           </li>
           <li className="font-normal">
             Perlu anda ketahui{" "}
             <span className="font-semibold">token bersifat unik</span> atau{" "}
             <span className="font-semibold">
-              Setiap ujian tokennya berbeda dan tidak sama
+              Setiap ujian tokennya berbeda atau tidak sama dan minimal 5
+              karakter
             </span>{" "}
           </li>
-          <li className="font-medium">Token harus minimal 5 karakter </li>
         </ul>
       </div>
     </div>

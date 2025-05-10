@@ -19,6 +19,7 @@ import {
   IconButton,
   Collapse,
   Box,
+  Typography,
 } from "@mui/material";
 import {
   Select,
@@ -120,6 +121,7 @@ const DataUjian = () => {
 
   return (
     <div className="mt-2 flex flex-col gap-y-5">
+      <Typography variant="h5">Ujian Berlangsung:</Typography>
       <UjianTable title="Daftar Ujian Tingkat X" data={X} />
       <UjianTable title="Daftar Ujian Tingkat XI" data={XI} />
       <UjianTable title="Daftar Ujian Tingkat XII" data={XII} />
@@ -354,7 +356,11 @@ function Row({ row }: { row: UjianData }) {
                   <div className="w-full">
                     <p className="font-medium ">Waktu pengerjaan </p>
                     <Select
-                      defaultValue={row.waktuPengerjaan.toString()}
+                      defaultValue={
+                        row.waktuPengerjaan
+                          ? row.waktuPengerjaan.toString()
+                          : "-"
+                      }
                       name="waktuPengerjaan"
                     >
                       <SelectTrigger>

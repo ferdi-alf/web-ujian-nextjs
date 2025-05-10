@@ -115,41 +115,66 @@ export async function GET(request: NextRequest, { params }: any) {
   const idJadwal = params.id;
   console.log("idJadwal", idJadwal);
 
-  const jadwal = await prisma.jadwal.findUnique({
-    where: { id: idJadwal },
-    include: {
-      sesi: {
-        include: {
-          ujian: true,
+  try {
+    const jadwal = await prisma.jadwal.findUnique({
+      where: { id: idJadwal },
+      select: {
+        tingkat: true,
+      },
+    });
+
+    if (!idJadwal) {
+      return NextResponse.json(
+        { error: true, message: "Jadwal not found" },
+        { status: 404 }
+      );
+    }
+
+    const tingkat = jadwal?.tingkat;
+
+    const allJadwalWithSameTingkat = await prisma.jadwal.findMany({
+      where: {
+        tingkat: tingkat,
+      },
+      select: {
+        sesi: {
+          select: {
+            ujian: {
+              select: {
+                mataPelajaranId: true,
+              },
+            },
+          },
         },
       },
-    },
-  });
-  console.log("jadwal", jadwal);
+    });
 
-  if (!jadwal) {
-    return NextResponse.json({ error: "Jadwal not found" }, { status: 404 });
-  }
+    const usedMataPelajaranIds = new Set(
+      allJadwalWithSameTingkat.flatMap((j) =>
+        j.sesi.flatMap((s) => s.ujian.map((u) => u.mataPelajaranId))
+      )
+    );
 
-  const tingkat = jadwal.tingkat;
-
-  const usedMataPelajaranIds = new Set(
-    jadwal.sesi.flatMap((s) => s.ujian.map((u) => u.mataPelajaranId))
-  );
-
-  const available = await prisma.mataPelajaran.findMany({
-    where: {
-      tingkat,
-      id: {
-        notIn: Array.from(usedMataPelajaranIds),
+    const available = await prisma.mataPelajaran.findMany({
+      where: {
+        tingkat,
+        id: {
+          notIn: Array.from(usedMataPelajaranIds).filter(Boolean),
+        },
       },
-    },
-    select: {
-      id: true,
-      tingkat: true,
-      pelajaran: true,
-    },
-  });
+      select: {
+        id: true,
+        tingkat: true,
+        pelajaran: true,
+      },
+    });
 
-  return NextResponse.json(available);
+    return NextResponse.json(available);
+  } catch (error) {
+    console.error("Error fetching available mata pelajaran:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch available mata pelajaran" },
+      { status: 500 }
+    );
+  }
 }

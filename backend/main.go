@@ -48,6 +48,7 @@ func main() {
     app.Post("/api/kecurangan", cheatingHandler.ReportCheating)
    // Add to your existing routes in main.go
     ujianHandler := handlers.NewUjianHandler(db)
+    // app.Get("/api/get-data-ujian", ujianHandler.GetDataUjian)
     app.Post("/api/ujian/submit", ujianHandler.SubmitUjian)
     app.Get("/api/hasil/:id", ujianHandler.GetHasilDetail)
     app.Get("/api/ujian/download", func(c *fiber.Ctx) error {

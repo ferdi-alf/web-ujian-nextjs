@@ -34,7 +34,10 @@ export function SidebarContent({ children }: { children: React.ReactNode }) {
       } md:translate-x-0`}
       aria-label="Sidebar"
     >
-      <div ref={sidebarRef} className="w-64  p-2 h-screen bg-white">
+      <div
+        ref={sidebarRef}
+        className="w-64  overflow-auto p-2 h-screen bg-white"
+      >
         <div className="w-full md:hidden flex justify-end">
           <X onClick={() => toggleSidebar()} />
         </div>

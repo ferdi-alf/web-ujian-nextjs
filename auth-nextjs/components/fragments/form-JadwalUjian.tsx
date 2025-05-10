@@ -9,7 +9,6 @@ interface ErrorField {
   tanggal?: string[] | undefined;
 }
 const FormJadwalUjian = ({ state }: { state?: ErrorField }) => {
-  console.log("anjiiiiing", state);
   const [startDate, setStartDate] = useState(new Date());
   return (
     <>
@@ -48,15 +47,31 @@ const FormJadwalUjian = ({ state }: { state?: ErrorField }) => {
           <DatePicker
             id="tanggal"
             selected={startDate}
-            onChange={(date: Date | null) => date && setStartDate(date)}
+            onChange={(date: Date | null) => {
+              if (date) {
+                date.setHours(12, 0, 0, 0);
+                setStartDate(date);
+
+                const inputHidden = document.getElementById(
+                  "tanggal-hidden"
+                ) as HTMLInputElement;
+                if (inputHidden) {
+                  inputHidden.value = date.toISOString().split("T")[0];
+                }
+              }
+            }}
+            locale="id"
             preventOpenOnFocus
+            strictParsing
             dateFormat="dd/MM/yyyy"
             className={`bg-gray-50 border ${
               state?.tanggal ? "border-red-500" : "border-gray-300"
             }   text-sm rounded-lg w-full p-2.5`}
             placeholderText="dd/mm/yyyy"
-            name="tanggal"
+            name="tanggal-picker"
           />
+          <input type="hidden" name="tanggal" id="tanggal-hidden" />
+
           <p className="text-sm text-red-500">{state?.tanggal}</p>
         </div>
         <div className="">

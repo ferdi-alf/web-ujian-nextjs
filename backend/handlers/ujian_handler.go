@@ -19,6 +19,10 @@ func NewUjianHandler(db *sql.DB) *UjianHandler {
 	return &UjianHandler{DB: db}
 }
 
+// func (h *UjianHandler) GetDataUjian(c *fiber.Ctx) error {
+
+// }
+
 // SubmitUjian handles the submission of student exam answers
 func (h *UjianHandler) SubmitUjian(c *fiber.Ctx) error {
     // Log the start of request handling
@@ -192,7 +196,6 @@ for soalID, jawabanID := range request.Answers {
     })
 }
 
-// Add this function to your UjianHandler struct
 
 func (h *UjianHandler) GetHasilDetail(c *fiber.Ctx) error {
 	hasilID := c.Params("id")

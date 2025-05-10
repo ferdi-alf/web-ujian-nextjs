@@ -1,8 +1,15 @@
+/* eslint-disable prefer-const */
 "use server";
 import { auth } from "@/auth";
 import { JadwalData } from "@/components/table/data-jadwalUjian";
 import { prisma } from "@/lib/prisma";
 import { addJadwalUjianSchema } from "@/lib/zod";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -35,10 +42,23 @@ export async function POST(request: NextRequest) {
     }
 
     const { tingkat, tanggal, jumlahSesi } = validateFields.data;
+
+    let processedDate = dayjs(tanggal)
+      .tz("Asia/Jakarta")
+      .hour(12)
+      .minute(0)
+      .second(0)
+      .millisecond(0);
+
+    const adjustedDate = processedDate.toDate();
+
+    console.log("Original date input:", tanggal);
+    console.log("Processed date:", processedDate.format("YYYY-MM-DD HH:mm:ss"));
+    console.log("Adjusted date for DB:", adjustedDate);
     const existingJadwal = await prisma.jadwal.findFirst({
       where: {
         tingkat: tingkat,
-        tanggal: tanggal,
+        tanggal: adjustedDate,
       },
     });
 
@@ -62,7 +82,7 @@ export async function POST(request: NextRequest) {
     const jadwal = await prisma.jadwal.create({
       data: {
         tingkat,
-        tanggal,
+        tanggal: adjustedDate,
       },
     });
 
@@ -136,10 +156,15 @@ export async function GET() {
     } as Record<"X" | "XI" | "XII", JadwalData[]>;
 
     for (const jadwal of jadwalList) {
-      const jumlahUjian = jadwal.sesi.reduce(
-        (total, sesi) => total + sesi.ujian.length,
-        0
-      );
+      const uniqueUjianIds = new Set<string>();
+
+      for (const sesi of jadwal.sesi) {
+        for (const ujian of sesi.ujian) {
+          uniqueUjianIds.add(ujian.mataPelajaranId); // atau ujian.mataPelajaranId kalau ingin berdasarkan pelajaran
+        }
+      }
+
+      const jumlahUjian = uniqueUjianIds.size;
 
       const jadwalData = {
         id: jadwal.id,

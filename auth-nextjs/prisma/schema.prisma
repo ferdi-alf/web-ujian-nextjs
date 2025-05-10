@@ -125,15 +125,7 @@ model Jawaban {
   @@map("jawaban")
 }
 
-model MataPelajaran {
-  id        String  @id @default(cuid())
-  tingkat   Tingkat
-  pelajaran String
-  soal      Soal[]
-  ujian     Ujian[]
 
-  @@map("mata_pelajaran")
-}
 enum Tingkat {
   X
   XI
@@ -178,6 +170,15 @@ model Ujian {
   JawabanSiswa JawabanSiswa[]
 
   @@map("ujian")
+}
+model MataPelajaran {
+  id        String  @id @default(cuid())
+  tingkat   Tingkat
+  pelajaran String
+  soal      Soal[]
+  ujian     Ujian[]
+
+  @@map("mata_pelajaran")
 }
 model Hasil {
   id              String      @id @default(cuid())

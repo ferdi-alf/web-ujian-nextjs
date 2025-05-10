@@ -1,4 +1,7 @@
+import dayjs from "dayjs";
 import { object, string, z } from "zod";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 
 export const SignInSchema = object({
   username: string().nonempty("Invalid email"),
@@ -408,10 +411,8 @@ export const updateUjianSchema = z
       path: ["jamSelesai"],
     }
   )
-  // Additional validation for active status
   .refine(
     (data) => {
-      // If status is active, both start and end times must be provided
       if (data.status === "active") {
         return !!(data.jamMulai && data.jamSelesai);
       }
@@ -424,7 +425,6 @@ export const updateUjianSchema = z
     }
   );
 
-// Type inference for TypeScript
 export type UpdateUjianInput = z.infer<typeof updateUjianSchema>;
 export const tokenSchema = z.object({
   token: z.string().min(1, { message: "token tidak boleh kosong" }),
@@ -485,4 +485,133 @@ export const addUjianToSesiSchema = z.object({
     })
   ),
   idJadwal: z.string(),
+});
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+
+export const ujianSchema = z
+  .object({
+    id: z.string(),
+    jamMulai: z.string().nullable(),
+    jamSelesai: z.string().nullable(),
+    mataPelajaran: z.string().optional(), // Tambahkan ini karena ada di data
+  })
+  .refine(
+    (data) => {
+      // Skip validasi jika salah satu atau kedua nilai null
+      if (data.jamMulai === null || data.jamSelesai === null) {
+        return true;
+      }
+
+      // Konversi ke objek dayjs dan bandingkan secara eksplisit dengan format
+      const start = dayjs(`2023-01-01 ${data.jamMulai}`);
+      const end = dayjs(`2023-01-01 ${data.jamSelesai}`);
+
+      // Pastikan jam mulai lebih awal dari jam selesai
+      return start.isBefore(end);
+    },
+    {
+      message: "Jam mulai ujian harus lebih kecil dari jam selesai",
+      path: ["jamMulai"],
+    }
+  );
+
+// Schema untuk sesi
+const sesiSchema = z
+  .object({
+    id: z.string(),
+    jamMulai: z.string().nullable(), // Mengizinkan null
+    jamSelesai: z.string().nullable(), // Mengizinkan null
+    ujian: z.array(ujianSchema),
+    sesi: z.number().optional(), // Tambahkan ini karena ada di data
+  })
+  .refine(
+    (data) => {
+      try {
+        // Skip validasi jika salah satu atau kedua nilai null
+        if (data.jamMulai === null || data.jamSelesai === null) {
+          return true;
+        }
+
+        // Gunakan pendekatan tanggal lengkap untuk menghindari masalah format
+        const start = dayjs(`2023-01-01 ${data.jamMulai}`);
+        const end = dayjs(`2023-01-01 ${data.jamSelesai}`);
+
+        // Cek secara eksplisit apakah valid sebelum membandingkan
+        if (!start.isValid() || !end.isValid()) {
+          console.log("Format waktu tidak valid:", { start, end });
+          return false;
+        }
+
+        // Debug
+        console.log("Comparing times:", {
+          jamMulai: data.jamMulai,
+          jamSelesai: data.jamSelesai,
+          isBefore: start.isBefore(end),
+        });
+
+        // Pastikan jam mulai sesi lebih awal dari jam selesai sesi
+        return start.isBefore(end);
+      } catch (error) {
+        console.error("Error during validation:", error);
+        return false;
+      }
+    },
+    {
+      message: "Jam mulai sesi harus lebih kecil dari jam selesai",
+      path: ["jamMulai"],
+    }
+  )
+  .superRefine((data, ctx) => {
+    // Skip validasi jika jam sesi tidak lengkap
+    if (data.jamMulai === null || data.jamSelesai === null) {
+      return;
+    }
+
+    const sesiStart = dayjs(`2023-01-01 ${data.jamMulai}`);
+    const sesiEnd = dayjs(`2023-01-01 ${data.jamSelesai}`);
+
+    // Periksa setiap ujian
+    data.ujian.forEach((ujian, index) => {
+      // Skip jika jamMulai atau jamSelesai ujian null
+      if (ujian.jamMulai === null || ujian.jamSelesai === null) {
+        return;
+      }
+
+      const ujianStart = dayjs(`2023-01-01 ${ujian.jamMulai}`);
+      const ujianEnd = dayjs(`2023-01-01 ${ujian.jamSelesai}`);
+
+      // Validasi: ujianStart harus >= sesiStart
+      if (!ujianStart.isSame(sesiStart) && !ujianStart.isAfter(sesiStart)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Jam mulai ujian (${ujian.jamMulai}) harus sama dengan atau setelah jam mulai sesi (${data.jamMulai})`,
+          path: [`ujian`, index, "jamMulai"],
+        });
+      }
+
+      // Validasi: ujianEnd harus <= sesiEnd
+      if (!ujianEnd.isSame(sesiEnd) && !ujianEnd.isBefore(sesiEnd)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Jam selesai ujian (${ujian.jamSelesai}) harus sama dengan atau sebelum jam selesai sesi (${data.jamSelesai})`,
+          path: [`ujian`, index, "jamSelesai"],
+        });
+      }
+
+      // Validasi: ujianStart harus < ujianEnd
+      if (!ujianStart.isBefore(ujianEnd)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Jam mulai ujian (${ujian.jamMulai}) harus lebih awal dari jam selesai ujian (${ujian.jamSelesai})`,
+          path: [`ujian`, index, "jamMulai"],
+        });
+      }
+    });
+  });
+
+export const payloadSchema = z.object({
+  idJadwal: z.string(),
+  sesi: z.array(sesiSchema),
 });

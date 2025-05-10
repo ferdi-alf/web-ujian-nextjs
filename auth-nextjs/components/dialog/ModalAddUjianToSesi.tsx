@@ -11,16 +11,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { FormButton } from "../button";
-import { startTransition, useActionState, useEffect, useState } from "react";
-import { mutate } from "swr";
 import {
-  showErrorToast,
-  showSuccessToast,
-} from "@/components/toast/ToastSuccess";
-import { Autocomplete, TextField, Chip } from "@mui/material";
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { showErrorToast } from "@/components/toast/ToastSuccess";
+import { Autocomplete, TextField, Chip, CircularProgress } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/id";
 import { addUjianToSesi } from "@/lib/crudUjian";
+import { mutate } from "swr";
 
 type MataPelajaran = {
   id: string;
@@ -31,53 +34,68 @@ type MataPelajaran = {
 const ModalAddUjianToSesi = ({
   tanggal,
   idJadwal,
+  onSuccess = () => {},
 }: {
   tanggal: string;
   idJadwal: string;
+  onSuccess?: () => void;
 }) => {
   const [state, formAction] = useActionState(addUjianToSesi, null);
   const [data, setData] = useState<MataPelajaran[]>([]);
   const [selectedMapel, setSelectedMapel] = useState<MataPelajaran[]>([]);
   const [open, setOpen] = useState(false);
-  console.log(state);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const successToastShown = useRef(false);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!open || !idJadwal) return;
+
+      setIsLoading(true);
       try {
         const res = await fetch(`/api/matapelajaran/${idJadwal}`, {
           method: "GET",
         });
         const result = await res.json();
-        console.log("Fetched data:", result);
 
         if (!res.ok) throw new Error(result.error || "Failed to fetch");
         setData(result);
       } catch (error) {
         console.error("Fetch error:", error);
         showErrorToast("Gagal mengambil data mata pelajaran.");
+      } finally {
+        setIsLoading(false);
       }
     };
-    if (idJadwal) fetchData();
-  }, [idJadwal]);
+
+    fetchData();
+  }, [idJadwal, open]);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && !successToastShown.current) {
+      successToastShown.current = true;
       mutate("jadwalUjian");
+      onSuccess();
       setOpen(false);
       setSelectedMapel([]);
-    }
-  }, [state]);
-
-  useEffect(() => {
-    if (state?.success) {
-      showSuccessToast(state.message);
     } else if (state?.error) {
       showErrorToast(state.message || "Terjadi kesalahan");
     }
-  }, [state]);
 
+    return () => {
+      if (!open) {
+        successToastShown.current = false;
+      }
+    };
+  }, [state, onSuccess, open]);
   const handleSubmit = (event: any) => {
     event.preventDefault();
+
+    if (selectedMapel.length === 0) {
+      showErrorToast("Pilih minimal satu mata pelajaran");
+      return;
+    }
 
     startTransition(() => {
       formAction(new FormData(event.target));
@@ -85,12 +103,22 @@ const ModalAddUjianToSesi = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        setOpen(newOpen);
+        if (!newOpen) {
+          // Reset selection when modal is closed
+          setSelectedMapel([]);
+        }
+      }}
+    >
       <div className="flex w-full justify-end mb-5">
         <DialogTrigger className="p-2 shadow-md rounded-md text-lg text-white bg-blue-500">
           Tambah Ujian +
         </DialogTrigger>
       </div>
+
       <DialogContent className="w-11/12 bg-white">
         <DialogHeader>
           <DialogTitle>Tambah ujian</DialogTitle>
@@ -98,31 +126,40 @@ const ModalAddUjianToSesi = ({
             Tambahkan Ujian ke daftar sesi tanggal{" "}
             {dayjs(tanggal).locale("id").format("D MMMM YYYY")}
           </DialogDescription>
+
           <p className="font-semibold my-2">Tambahkan 1 atau lebih ujian</p>
+
           <form onSubmit={handleSubmit}>
-            <Autocomplete
-              multiple
-              disablePortal
-              id="mata-pelajaran-autocomplete"
-              options={data}
-              value={selectedMapel}
-              onChange={(event, newValue) => {
-                setSelectedMapel(newValue);
-                console.log("Selected values:", newValue);
-              }}
-              getOptionLabel={(option) =>
-                `${option.tingkat} - ${option.pelajaran}`
-              }
-              isOptionEqualToValue={(option, value) => option.id === value.id}
-              filterSelectedOptions
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Pilih Mata Pelajaran"
-                  placeholder="Mata Pelajaran"
-                />
-              )}
-            />
+            {isLoading ? (
+              <div className="flex justify-center items-center py-4">
+                <CircularProgress size={24} />
+                <span className="ml-2">Memuat data mata pelajaran...</span>
+              </div>
+            ) : (
+              <Autocomplete
+                multiple
+                disablePortal
+                id="mata-pelajaran-autocomplete"
+                options={data}
+                value={selectedMapel}
+                onChange={(event, newValue) => {
+                  setSelectedMapel(newValue);
+                }}
+                getOptionLabel={(option) =>
+                  `${option.tingkat} - ${option.pelajaran}`
+                }
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                filterSelectedOptions
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Pilih Mata Pelajaran"
+                    placeholder="Mata Pelajaran"
+                  />
+                )}
+                noOptionsText="Tidak ada mata pelajaran tersedia"
+              />
+            )}
 
             {selectedMapel.length > 0 && (
               <div className="mt-5">
@@ -130,24 +167,23 @@ const ModalAddUjianToSesi = ({
                   Mata Pelajaran Terpilih:
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {selectedMapel.map((mapel) => {
-                    return (
-                      <Chip
-                        key={mapel.id}
-                        label={`${mapel.tingkat} - ${mapel.pelajaran}`}
-                        color="primary"
-                        onDelete={() => {
-                          setSelectedMapel(
-                            selectedMapel.filter((item) => item.id !== mapel.id)
-                          );
-                        }}
-                      />
-                    );
-                  })}
+                  {selectedMapel.map((mapel) => (
+                    <Chip
+                      key={mapel.id}
+                      label={`${mapel.tingkat} - ${mapel.pelajaran}`}
+                      color="primary"
+                      onDelete={() => {
+                        setSelectedMapel(
+                          selectedMapel.filter((item) => item.id !== mapel.id)
+                        );
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
             )}
 
+            {/* Hidden inputs for form submission */}
             {selectedMapel.map((mapel, index) => (
               <input
                 key={index}
@@ -160,7 +196,9 @@ const ModalAddUjianToSesi = ({
             <input type="hidden" name="idJadwal" value={idJadwal} />
 
             <DialogFooter className="mt-10">
-              <FormButton />
+              <DialogFooter className="mt-10">
+                <FormButton />
+              </DialogFooter>
             </DialogFooter>
           </form>
         </DialogHeader>
