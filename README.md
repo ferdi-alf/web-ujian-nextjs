@@ -28,13 +28,13 @@ Jika kamu ingin menggunakan atau memodifikasi project ini:
 - Jangan hanya `git clone` tanpa memberi atribusi, hargai karya ini 🙏
 - Pastikan mencantumkan nama saya sebagai developer asli jika kamu menggunakan ulang kode ini, sesuai dengan lisensi MIT.
 
-[![GitHub forks](https://img.shields.io/github/forks/username/repo-name?style=social)](https://github.com/ferdi-alf/web-ujian-nextjs/network)
-[![GitHub stars](https://img.shields.io/github/stars/username/repo-name?style=social)](https://github.com/ferdi-alf/web-ujian-nextjs/stargazers)
-
+[![GitHub forks](https://img.shields.io/github/forks/ferdi-alf/web-ujian-nextjs?style=social)](https://github.com/ferdi-alf/web-ujian-nextjs/network)
+[![GitHub stars](https://img.shields.io/github/stars/ferdi-alf/web-ujian-nextjs?style=social)](https://github.com/ferdi-alf/web-ujian-nextjs/stargazers)
 
 📌 Jangan lupa beri ⭐ (star) untuk mendukung pengembangan project ini!
 
 Terima kasih!
+
 
 Stay tuned untuk update selanjutnya! 🎯
 
