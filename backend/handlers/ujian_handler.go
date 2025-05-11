@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
 )
 
@@ -15,13 +17,483 @@ type UjianHandler struct {
 	DB *sql.DB
 }
 
+type UjianDashboardData struct {
+    Type           string      `json:"type"`
+	HasUpcomingExam bool        `json:"hasUpcomingExam"`
+	DaysUntil      int         `json:"daysUntil"`
+	FirstExamDate  string      `json:"firstExamDate,omitempty"`
+	CurrentSession *SessionData `json:"currentSession,omitempty"`
+	NextSession    *SessionData `json:"nextSession,omitempty"`
+	ExamData       *ExamData    `json:"examData,omitempty"`
+}
+
+type SessionData struct {
+	Sesi      int       `json:"sesi"`
+	JamMulai  string    `json:"jamMulai"`
+	JamSelesai string   `json:"jamSelesai"`
+	Tanggal   time.Time `json:"tanggal"`
+	CountDown int       `json:"countDown"` // dalam menit
+}
+
+// ExamData menyimpan data ujian per tingkat
+type ExamData struct {
+	X  []ExamDetails `json:"X"`
+	XI []ExamDetails `json:"XI"`
+	XII []ExamDetails `json:"XII"`
+}
+
+// ExamDetails menyimpan detail tiap ujian
+type ExamDetails struct {
+	ID             string `json:"id"`
+	MataPelajaran  string `json:"mataPelajaran"`
+	Status         string `json:"status"`
+	JamMulai       string `json:"jamMulai"`
+	JamSelesai     string `json:"jamSelesai"`
+	CountDownMenit int    `json:"countDownMenit,omitempty"`
+}
+
+var (
+    ujianClients = make(map[*websocket.Conn] bool)
+    ujianRegister = make(chan *websocket.Conn)
+    ujianUnregister = make(chan *websocket.Conn)
+	ujianBroadcast = make(chan *UjianDashboardData)
+	ujianMutex     = sync.Mutex{}
+)
+
 func NewUjianHandler(db *sql.DB) *UjianHandler {
 	return &UjianHandler{DB: db}
 }
 
-// func (h *UjianHandler) GetDataUjian(c *fiber.Ctx) error {
+func SetupWebSocketUjian(app *fiber.App, db *sql.DB) {
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
 
-// }
+	app.Get("/ws/api/data-ujian", websocket.New(func(c *websocket.Conn) {
+		ujianRegister <- c
+		defer func() {
+			ujianUnregister <- c
+		}()
+
+		initialData, err := getUjianData(db)
+		if err != nil {
+			log.Printf("Error getting initial data: %v", err)
+		} else {
+			err = c.WriteJSON(initialData)
+			if err != nil {
+				log.Printf("Error sending initial data: %v", err)
+			}
+		}
+
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}))
+	
+	go handleUjianWebSocket()
+	go runUjianChecker(db)
+}
+
+func handleUjianWebSocket() {
+    for{
+        select{
+        case connection := <-ujianRegister:
+            ujianMutex.Lock()
+            ujianClients[connection] = true
+            ujianMutex.Unlock()
+
+        case connection := <-ujianUnregister:
+			ujianMutex.Lock()
+			delete(ujianClients, connection)
+			ujianMutex.Unlock()
+
+        case message := <-ujianBroadcast:
+            ujianMutex.Lock()
+            for connection := range ujianClients {
+                err := connection.WriteJSON(message)
+                if err != nil {
+                    log.Printf("Error writing to websocket: %v", err)
+                    delete(ujianClients, connection)
+                    connection.Close()
+                }
+            }
+            ujianMutex.Unlock()
+        }
+    }
+}
+
+// Pengecekan ujian berkala
+func runUjianChecker(db *sql.DB) {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+
+    log.Println("Starting ujian checker routine...")
+
+    for {
+        select {
+        case <-ticker.C:
+            log.Println("Checking exam data...")
+            ujianData, err := getUjianData(db)
+            if err != nil {
+                log.Printf("Error checking exam data: %v", err)
+                continue
+            }
+
+            log.Printf("Broadcasting exam data: %+v", ujianData)
+            ujianBroadcast <- ujianData
+        }
+    }
+}
+
+// getUjianData mendapatkan data ujian terbaru
+func getUjianData(db *sql.DB) (*UjianDashboardData, error) {
+    now := time.Now()
+    
+    // 1. Check for upcoming exams (3-1 days ahead)
+    upcomingData, err := getUpcomingExamData(db, now)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Jika ada ujian yang akan datang dalam 3-1 hari, kembalikan data tsb
+    if upcomingData.HasUpcomingExam {
+        return upcomingData, nil
+    }
+    
+    // 2. Periksa apakah ada ujian hari ini
+    todayExams, err := checkTodayExams(db, now)
+    if err != nil {
+        return nil, err
+    }
+    
+    return todayExams, nil
+}
+
+// Perbaikan untuk PostgreSQL
+func getUpcomingExamData(db *sql.DB, now time.Time) (*UjianDashboardData, error) {
+    query := `
+    SELECT
+        j.tanggal, s."jamMulai", s.sesi
+    FROM
+        jadwal j
+    JOIN
+        sesi s ON s."jadwalId" = j.id
+    JOIN
+        ujian u ON u."sesiId" = s.id
+    WHERE
+        j.tanggal BETWEEN $1 AND $2
+    ORDER BY
+        j.tanggal ASC, s.sesi ASC
+    LIMIT 1
+    `
+
+    threeDaysLater := now.AddDate(0, 0, 3)
+
+    var examDate time.Time
+    var jamMulai string
+    var sesi int
+
+    // Perhatikan penggunaan $1 dan $2 dalam parameter query
+    err := db.QueryRow(query, now.Format("2006-01-02"), threeDaysLater.Format("2006-01-02")).Scan(&examDate, &jamMulai, &sesi)
+
+    if err == sql.ErrNoRows {
+        return &UjianDashboardData{
+            Type:           "upcoming_exam_check",
+            HasUpcomingExam: false,
+            DaysUntil:      -1,
+        }, nil
+    } else if err != nil {
+        return nil, err
+    }
+
+    firstExamStartTime, err := convertToTimeObject(examDate, jamMulai)
+    if err != nil {
+        return nil, err
+    }
+
+    // Hitung hari yang tersisa
+    if firstExamStartTime.Sub(now).Minutes() < 30 {
+        return &UjianDashboardData{
+            Type:           "upcoming_exam_check",
+            HasUpcomingExam: false, // Nonaktifkan karena ujian akan dimulai
+            DaysUntil:      0,
+        }, nil
+    }
+
+    // Perbaikan perhitungan days until
+    // Gunakan date secara khusus, bukan waktu dalam jam
+    examDay := time.Date(examDate.Year(), examDate.Month(), examDate.Day(), 0, 0, 0, 0, examDate.Location())
+    today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+    
+    // Hitung selisih dalam hari
+    daysUntil := int(examDay.Sub(today).Hours() / 24)
+
+    if daysUntil > 3 {
+        return &UjianDashboardData{
+            Type:           "upcoming_exam_check",
+            HasUpcomingExam: false,
+            DaysUntil:      -1,
+        }, nil
+    }
+
+    return &UjianDashboardData{
+        Type:           "upcoming_exam_check",
+        HasUpcomingExam: true,
+        DaysUntil:      daysUntil,
+        FirstExamDate:  examDate.Format("2006-01-02"),
+    }, nil
+}
+
+func checkTodayExams(db *sql.DB, now time.Time)  (*UjianDashboardData, error) {
+    loc, err := time.LoadLocation("Asia/Jakarta")
+    if err != nil {
+        loc = time.Local
+    }
+    todayStr := now.In(loc).Format("2006-01-02")
+
+     // 1. Cek apakah ada sesi ujian aktif saat ini
+     currentSession, err := getCurrentSession(db, now)
+     if err != nil && err != sql.ErrNoRows {
+         return nil, err
+     }
+     
+     // 2. Cek sesi berikutnya jika berlaku
+     nextSession, err := getNextSession(db, now)
+     if err != nil && err != sql.ErrNoRows {
+         return nil, err
+     }
+     
+     // 3. Ambil data ujian untuk hari ini berdasarkan tingkat
+     examData, err := getTodayExamData(db, todayStr)
+     if err != nil {
+         return nil, err
+     }
+
+     return &UjianDashboardData{
+        Type:           "today_exam_data",
+        HasUpcomingExam: false,
+        DaysUntil:      0,
+        CurrentSession: currentSession,
+        NextSession:    nextSession,
+        ExamData:       examData,
+    }, nil
+}
+
+func getCurrentSession(db *sql.DB, now time.Time) (*SessionData, error) {
+    loc, err := time.LoadLocation("Asia/Jakarta")
+    if err != nil {
+        loc = time.Local
+    }
+
+    nowInWIB := now.In(loc)
+    todayStr := nowInWIB.Format("2006-01-02")
+
+    query := `
+    SELECT 
+        j.tanggal, s.sesi, s."jamMulai", s."jamSelesai"
+    FROM 
+        jadwal j
+    JOIN 
+        sesi s ON s."jadwalId" = j.id
+    WHERE 
+        j.tanggal = $1
+        AND cast($2 as time) BETWEEN cast(s."jamMulai" as time) AND cast(s."jamSelesai" as time)
+    ORDER BY 
+        s.sesi ASC
+    LIMIT 1
+    `
+
+    var tanggal time.Time
+    var sesi int
+    var jamMulai, jamSelesai string
+
+    currentTime := nowInWIB.Format("15:04:05")
+    err = db.QueryRow(query, todayStr, currentTime).Scan(&tanggal, &sesi, &jamMulai, &jamSelesai)
+    if err != nil {
+        return nil, err
+    }
+
+    SessionData := &SessionData{
+        Sesi: sesi,
+        JamMulai:  jamMulai,
+        JamSelesai: jamSelesai,
+        Tanggal:   tanggal,
+        CountDown: 0,
+    }
+
+    return SessionData, nil
+}
+
+func getNextSession(db *sql.DB, now time.Time) (*SessionData, error) {
+    loc, err := time.LoadLocation("Asia/Jakarta")
+    if err != nil {
+        loc = time.Local
+    }
+    nowInWIB := now.In(loc)
+    todayStr := nowInWIB.Format("2006-01-02")
+    currentTime := nowInWIB.Format("15:04:05")
+
+    query := `
+    SELECT 
+        j.tanggal, s.sesi, s."jamMulai", s."jamSelesai"
+    FROM 
+        jadwal j
+    JOIN 
+        sesi s ON s."jadwalId" = j.id
+    WHERE 
+        j.tanggal = $1
+        AND cast(s."jamMulai" as time) > cast($2 as time)
+    ORDER BY 
+        s."jamMulai" ASC
+    LIMIT 1
+    `
+
+    var tanggal time.Time
+    var sesi int
+    var jamMulai, jamSelesai string
+
+    err = db.QueryRow(query, todayStr, currentTime).Scan(&tanggal, &sesi, &jamMulai, &jamSelesai)
+    if err != nil {
+        return nil, err
+    }
+
+    nextSessionTime, err := convertToTimeObject(tanggal, jamMulai)
+    if err != nil {
+        return nil, err
+    }
+
+    countDown := int(nextSessionTime.Sub(nowInWIB).Minutes())
+
+    if countDown > 60 {
+        countDown = 60
+    }
+
+    sessionData := &SessionData{
+        Sesi:      sesi,
+        JamMulai:  jamMulai,
+        JamSelesai: jamSelesai,
+        Tanggal:   tanggal,
+        CountDown: countDown,
+    }
+    
+    return sessionData, nil
+
+}
+
+func getTodayExamData(db *sql.DB, todayStr string) (*ExamData, error) {
+    loc, err := time.LoadLocation("Asia/Jakarta")
+    if err != nil {
+        loc = time.Local
+    }
+    now := time.Now().In(loc)
+    // currentTime := now.Format("15:04:05")
+    
+    // Query untuk mengambil ujian hari ini per tingkat
+    query := `
+    SELECT 
+        u.id, 
+        u.status, 
+        u."jamMulai", 
+        u."jamSelesai", 
+        mp.pelajaran,
+        mp.tingkat
+    FROM 
+        ujian u
+    JOIN 
+        mata_pelajaran mp ON u."mataPelajaranId" = mp.id
+    JOIN 
+        sesi s ON u."sesiId" = s.id
+    JOIN 
+        jadwal j ON s."jadwalId" = j.id
+    WHERE 
+        j.tanggal = $1
+    ORDER BY 
+        u."jamMulai" ASC
+    `
+    
+    rows, err := db.Query(query, todayStr)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    
+    examData := &ExamData{
+        X:  []ExamDetails{},
+        XI: []ExamDetails{},
+        XII: []ExamDetails{},
+    }
+    
+    for rows.Next() {
+        var id, status, jamMulai, jamSelesai, pelajaran, tingkat string
+        
+        err := rows.Scan(&id, &status, &jamMulai, &jamSelesai, &pelajaran, &tingkat)
+        if err != nil {
+            return nil, err
+        }
+        
+        // Hitung countdown dalam menit jika status pending dan jamMulai valid
+        countDownMenit := 0
+        if status == "pending" && jamMulai != "" {
+            examTime, timeErr := convertToTimeObject(now, jamMulai)
+            if timeErr == nil {
+                countDownMenit = int(examTime.Sub(now).Minutes())
+                
+                // Ubah status menjadi "active" jika kurang dari 30 menit
+                if countDownMenit <= 30 && countDownMenit > 0 {
+                    countDownMenit = countDownMenit
+                } else {
+                    countDownMenit = 0
+                }
+            }
+        }
+        
+        examDetail := ExamDetails{
+            ID:             id,
+            MataPelajaran:  pelajaran,
+            Status:         status,
+            JamMulai:       jamMulai,
+            JamSelesai:     jamSelesai,
+            CountDownMenit: countDownMenit,
+        }
+        
+        switch tingkat {
+        case "X":
+            examData.X = append(examData.X, examDetail)
+        case "XI":
+            examData.XI = append(examData.XI, examDetail)
+        case "XII":
+            examData.XII = append(examData.XII, examDetail)
+        }
+    }
+    
+    return examData, nil
+}
+
+
+func convertToTimeObject(date time.Time, timeStr string) (time.Time, error) {
+    loc, err := time.LoadLocation("Asia/Jakarta")
+    if err != nil {
+        loc = time.Local
+    }
+    
+    year, month, day := date.Date()
+
+    timeLayout := "15:04"
+    t, err := time.Parse(timeLayout, timeStr)
+    if err != nil {
+        return time.Time{}, err
+    }
+
+    return time.Date(year, month, day, t.Hour(), t.Minute(), 0, 0, loc), nil
+}
+
+
 
 // SubmitUjian handles the submission of student exam answers
 func (h *UjianHandler) SubmitUjian(c *fiber.Ctx) error {

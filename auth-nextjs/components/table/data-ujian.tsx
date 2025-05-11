@@ -20,6 +20,7 @@ import {
   Collapse,
   Box,
   Typography,
+  Alert,
 } from "@mui/material";
 import {
   Select,
@@ -39,23 +40,48 @@ import {
   showErrorToast,
   showSuccessToast,
 } from "@/components/toast/ToastSuccess";
-import { Trash2Icon } from "lucide-react";
+import { Trash2Icon, CalendarIcon, InfoIcon } from "lucide-react";
 import { FormButton } from "../button";
 import Swal from "sweetalert2";
 import ButtonDownloadBeritaAcara from "../DownloadBeritaAcara";
+import dayjs from "dayjs";
+import "dayjs/locale/id";
 
 interface UjianData {
   id: string;
+  token: string;
+  waktuPengerjaan: number;
+  status: "pending" | "active" | "selesai";
+  jamMulai: string;
+  jamSelesai: string;
   mataPelajaran: {
     id: string;
-    tingkat: string;
+    tingkat: "X" | "XI" | "XII";
     pelajaran: string;
   };
-  token?: string;
-  jamMulai?: string;
-  jamSelesai?: string;
-  waktuPengerjaan: number;
-  status: string;
+  countDownMenit?: number;
+}
+
+interface SessionData {
+  sesi: number;
+  jamMulai: string;
+  jamSelesai: string;
+  tanggal: string;
+  countDown: number;
+}
+
+interface WebSocketData {
+  type: "upcoming_exam_check" | "today_exam_data";
+  hasUpcomingExam: boolean;
+  daysUntil: number;
+  firstExamDate?: string;
+  currentSession?: SessionData;
+  nextSession?: SessionData;
+  examData?: {
+    X: UjianData[];
+    XI: UjianData[];
+    XII: UjianData[];
+  };
 }
 
 interface UjianTableProps {
@@ -79,7 +105,98 @@ const fetchUjian = async () => {
 
 const DataUjian = () => {
   const { data: rawData, error, isLoading } = useSWR("ujian", fetchUjian);
-  console.log(rawData);
+  const [wsData, setWsData] = useState<WebSocketData | null>(null);
+  const [countdown, setCountdown] = useState<{ [key: string]: number }>({});
+
+  // Connect to WebSocket
+  useEffect(() => {
+    const HOST = process.env.NEXT_PUBLIC_API_URL_GOLANG?.replace("http://", "");
+    if (!HOST) {
+      console.error("NEXT_PUBLIC_API_URL_GOLANG not defined");
+      return;
+    }
+
+    const ws = new WebSocket(`ws://${HOST}/ws/api/data-ujian`);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setWsData(data);
+
+        // Set initial countdowns if applicable
+        if (data.type === "today_exam_data" && data.examData) {
+          const newCountdown: { [key: string]: number } = {};
+
+          // Process X, XI, XII exams
+          ["X", "XI", "XII"].forEach((tingkat) => {
+            if (data.examData[tingkat]) {
+              data.examData[tingkat].forEach((exam: UjianData) => {
+                if (exam.countDownMenit && exam.countDownMenit > 0) {
+                  newCountdown[exam.id] = exam.countDownMenit;
+                }
+              });
+            }
+          });
+
+          setCountdown(newCountdown);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    };
+
+    ws.onopen = () => console.log("WebSocket connected");
+    ws.onclose = () => console.log("WebSocket disconnected");
+    ws.onerror = (error) => console.error("WebSocket error:", error);
+
+    return () => ws.close();
+  }, []);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (Object.keys(countdown).length === 0) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        const updated: { [key: string]: number } = {};
+        let hasChanges = false;
+
+        Object.entries(prev).forEach(([id, value]) => {
+          if (value > 0) {
+            updated[id] = value - 1;
+            hasChanges = true;
+          }
+        });
+
+        return hasChanges ? updated : prev;
+      });
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  // Format countdown to minutes
+  const formatCountdown = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes} menit`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours} jam ${mins > 0 ? `${mins} menit` : ""}`;
+    }
+  };
+
+  // Format time HH:MM
+  const formatTime = (timeStr: string) => {
+    if (!timeStr) return "-";
+    return timeStr;
+  };
+
+  // Format date to Indonesian format
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-";
+    return dayjs(dateStr).locale("id").format("dddd, D MMMM YYYY");
+  };
 
   const { X, XI, XII } = React.useMemo(() => {
     if (!rawData) return { X: [], XI: [], XII: [] };
@@ -111,6 +228,74 @@ const DataUjian = () => {
     };
   }, [rawData]);
 
+  // Render upcoming exam notification
+  const renderUpcomingExamAlert = () => {
+    if (!wsData || !wsData.hasUpcomingExam || wsData.daysUntil <= 0) {
+      return null;
+    }
+
+    return (
+      <Alert severity="info" icon={<CalendarIcon />} sx={{ mb: 3 }}>
+        <div className="flex items-center">
+          <Typography variant="body1">
+            Ujian terjadwal {wsData.daysUntil} hari lagi
+            {wsData.firstExamDate && ` (${formatDate(wsData.firstExamDate)})`}
+          </Typography>
+        </div>
+      </Alert>
+    );
+  };
+
+  // Render current session info
+  const renderCurrentSession = () => {
+    if (
+      !wsData ||
+      wsData.type !== "today_exam_data" ||
+      !wsData.currentSession
+    ) {
+      return (
+        <Typography variant="subtitle1">Belum Ada Ujian Saat Ini</Typography>
+      );
+    }
+
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h6">
+          Ujian Berlangsung: Sesi {wsData.currentSession.sesi}
+          <Typography
+            variant="body2"
+            component="span"
+            color="text.secondary"
+            sx={{ ml: 1 }}
+          >
+            ({formatTime(wsData.currentSession.jamMulai)} -{" "}
+            {formatTime(wsData.currentSession.jamSelesai)})
+          </Typography>
+        </Typography>
+
+        {wsData.nextSession && wsData.nextSession.countDown <= 60 && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            <div className="flex items-center">
+              <Typography variant="body2">
+                Sesi selanjutnya ({wsData.nextSession.sesi}) dimulai dalam{" "}
+                {formatCountdown(wsData.nextSession.countDown)}
+                <Typography
+                  variant="body2"
+                  component="span"
+                  color="text.secondary"
+                  sx={{ ml: 1 }}
+                >
+                  ({formatTime(wsData.nextSession.jamMulai)} -{" "}
+                  {formatTime(wsData.nextSession.jamSelesai)})
+                </Typography>
+              </Typography>
+            </div>
+          </Alert>
+        )}
+      </Box>
+    );
+  };
+
   if (isLoading) {
     return <TableLoading />;
   }
@@ -121,7 +306,15 @@ const DataUjian = () => {
 
   return (
     <div className="mt-2 flex flex-col gap-y-5">
-      <Typography variant="h5">Ujian Berlangsung:</Typography>
+      {renderUpcomingExamAlert()}
+
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h5" gutterBottom>
+          Status Ujian
+        </Typography>
+        {renderCurrentSession()}
+      </Box>
+
       <UjianTable title="Daftar Ujian Tingkat X" data={X} />
       <UjianTable title="Daftar Ujian Tingkat XI" data={XI} />
       <UjianTable title="Daftar Ujian Tingkat XII" data={XII} />
@@ -139,7 +332,6 @@ function Row({ row }: { row: UjianData }) {
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState("");
   const [state, formAction] = useActionState(updateUjian, null);
-  console.log(state);
 
   const handleFormSubmit = async (formData: FormData) => {
     const status = formData.get("status") as string;
@@ -284,6 +476,35 @@ function Row({ row }: { row: UjianData }) {
     }
   };
 
+  // Render status with potential countdown
+  const renderStatus = () => {
+    if (row.status === "active") {
+      return (
+        <span
+          className={`capitalize font-medium text-xs me-2 px-2.5 py-0.5 rounded-sm border ${statusColors.active}`}
+        >
+          Aktif
+        </span>
+      );
+    } else if (row.status === "selesai") {
+      return (
+        <span
+          className={`capitalize font-medium text-xs me-2 px-2.5 py-0.5 rounded-sm border ${statusColors.selesai}`}
+        >
+          Selesai
+        </span>
+      );
+    } else {
+      return (
+        <span
+          className={`capitalize font-medium text-xs me-2 px-2.5 py-0.5 rounded-sm border ${statusColors.pending}`}
+        >
+          {row.status}
+        </span>
+      );
+    }
+  };
+
   return (
     <>
       <TableRow>
@@ -298,17 +519,7 @@ function Row({ row }: { row: UjianData }) {
           {row.mataPelajaran.pelajaran}
         </TableCell>
         <TableCell align="center">{row.token}</TableCell>
-        <TableCell align="center">
-          <span
-            className={`capitalize font-medium text-xs me-2 px-2.5 py-0.5 rounded-sm border ${
-              statusColors[row.status] ||
-              "bg-gray-100 text-gray-800 border-gray-500 "
-            }`}
-          >
-            {row.status}
-          </span>
-        </TableCell>
-
+        <TableCell align="center">{renderStatus()}</TableCell>
         <TableCell align="center">{row.waktuPengerjaan} menit</TableCell>
         <TableCell
           align="center"
@@ -336,9 +547,9 @@ function Row({ row }: { row: UjianData }) {
                 className="w-full mt-5 flex flex-col gap-y-4"
               >
                 <input type="hidden" name="id" value={row.id} />
-                <div className="grid grid-cols-2 gap-2 ">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="w-full">
-                    <p className="font-medium ">Status Ujian </p>
+                    <p className="font-medium">Status Ujian</p>
                     <Select defaultValue={row.status} name="status">
                       <SelectTrigger>
                         <SelectValue placeholder="Set status ujian" />
@@ -354,7 +565,7 @@ function Row({ row }: { row: UjianData }) {
                     </Select>
                   </div>
                   <div className="w-full">
-                    <p className="font-medium ">Waktu pengerjaan </p>
+                    <p className="font-medium">Waktu pengerjaan</p>
                     <Select
                       defaultValue={
                         row.waktuPengerjaan
@@ -375,19 +586,14 @@ function Row({ row }: { row: UjianData }) {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    {/* {errors?.waktuPengerjaan && (
-                      <p className="text-red-500 text-start text-sm mt-1">
-                        {errors.waktuPengerjaan[0]}
-                      </p>
-                    )} */}
                   </div>
                 </div>
 
-                <div className=" grid grid-cols-2 gap-2 ">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label
                       htmlFor="start-time"
-                      className="block mb-2 text-sm font-medium text-gray-900 "
+                      className="block mb-2 text-sm font-medium text-gray-900"
                     >
                       Jam Mulai:
                     </label>
@@ -397,14 +603,14 @@ function Row({ row }: { row: UjianData }) {
                         type="time"
                         id="start-time"
                         name="jamMulai"
-                        className="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 "
+                        className="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                       />
                     </div>
                   </div>
                   <div>
                     <label
                       htmlFor="end-time"
-                      className="block mb-2 text-sm font-medium text-gray-900 "
+                      className="block mb-2 text-sm font-medium text-gray-900"
                     >
                       Jam Selesai:
                     </label>
@@ -414,14 +620,14 @@ function Row({ row }: { row: UjianData }) {
                         type="time"
                         id="end-time"
                         name="jamSelesai"
-                        className="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 "
+                        className="bg-gray-50 border leading-none border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className=" mt-2 ">
-                  <label className="mb-2 text-sm font-medium text-gray-900 sr-only ">
+                <div className="mt-2">
+                  <label className="mb-2 text-sm font-medium text-gray-900 sr-only">
                     Token
                   </label>
                   <div className="relative">
@@ -430,13 +636,13 @@ function Row({ row }: { row: UjianData }) {
                       name="token"
                       value={token}
                       onChange={(e) => setToken(e.target.value)}
-                      className="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 "
+                      className="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Masukan token ujian"
                     />
                     <button
                       onClick={generateRandomToken}
                       type="button"
-                      className="text-white absolute end-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 "
+                      className="text-white absolute end-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2"
                     >
                       Buat otomatis
                     </button>
@@ -458,9 +664,11 @@ function Row({ row }: { row: UjianData }) {
 
 function UjianTable({ title, data }: UjianTableProps) {
   return (
-    <TableContainer component={Paper}>
+    <TableContainer component={Paper} sx={{ mb: 3 }}>
       <Toolbar>
-        <h6 className="text-lg font-medium">{title}</h6>
+        <Typography variant="h6" fontWeight="medium">
+          {title}
+        </Typography>
       </Toolbar>
       <Table>
         <TableHead>
@@ -470,13 +678,21 @@ function UjianTable({ title, data }: UjianTableProps) {
             <TableCell align="center">Token</TableCell>
             <TableCell align="center">Status</TableCell>
             <TableCell align="center">Waktu Pengerjaan</TableCell>
-            <TableCell align="inherit">Actions</TableCell>
+            <TableCell align="center">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((row) => (
-            <Row key={row.id} row={row} />
-          ))}
+          {data.length > 0 ? (
+            data.map((row) => <Row key={row.id} row={row} />)
+          ) : (
+            <TableRow>
+              <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                <Typography color="text.secondary">
+                  Tidak ada ujian terjadwal untuk tingkat ini
+                </Typography>
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </TableContainer>

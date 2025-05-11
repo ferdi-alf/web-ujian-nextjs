@@ -125,6 +125,11 @@ model Jawaban {
   @@map("jawaban")
 }
 
+enum Status {
+  pending
+  active
+  selesai
+}
 
 enum Tingkat {
   X
@@ -260,11 +265,7 @@ enum Kelamin {
 
 
 
-enum Status {
-  pending
-  active
-  selesai
-}
+
 
 enum TypeKecurangan {
   blurred
