@@ -53,9 +53,11 @@ func main() {
     app.Get("/api/hasil/:id", ujianHandler.GetHasilDetail)
     app.Get("/api/ujian/download", func(c *fiber.Ctx) error {
     return handlers.DownloadHasilUjian(c, db)
-})
+    })
     handlers.SetupWebSocket(app, db)
-    handlers.SetupWebSocketUjian(app, db)
+    app.Get("/api/data-ujian", handlers.GetUjianTrackingData(db))
+	// Setup WebSocket
+	handlers.SetupWebSocketUjian(app, db)
 
 
 

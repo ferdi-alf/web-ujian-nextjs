@@ -21,7 +21,9 @@ type CheatingHandler struct {
 func NewCheatingHandler(db *sql.DB) *CheatingHandler {
     return &CheatingHandler{DB: db}
 }
-// Simpan semua koneksi WS dan kelola mereka
+
+
+
 var (
     clients = make(map[*websocket.Conn]bool)
     clientsMutex = sync.Mutex{}
@@ -36,7 +38,6 @@ var (
         IsAdmin bool
     })
 )
-
 
 func (h *CheatingHandler) ReportCheating(c *fiber.Ctx) error {
     var event models.CheatingEvent
