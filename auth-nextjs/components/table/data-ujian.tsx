@@ -307,34 +307,6 @@ function Row({
     }
   }, [row]);
 
-  const handleDelete = async (row: UjianData) => {
-    const result = await Swal.fire({
-      icon: "warning",
-      title: "Apakah Anda yakin?",
-      text: `Jika Anda menghapus ujian ${row.mataPelajaran.tingkat} ${row.mataPelajaran.pelajaran}, semua yang berelasi dengan ujian ini termasuk data hasil ujian dan data kecurangan di ujian ini akan terhapus. Harap backup data terkait sebelum menghapus!`,
-      showCancelButton: true,
-      confirmButtonText: "Ya, hapus!",
-      cancelButtonText: "Cancel",
-      reverseButtons: true,
-    });
-    if (result.isConfirmed) {
-      try {
-        const res = await deleteUjian(row.id);
-
-        if (res.error && res.message) {
-          showErrorToast(res.message);
-        }
-        if (res.success && res.message) {
-          showSuccessToast(res.message);
-          mutate("ujian");
-        }
-      } catch (error) {
-        console.log(error);
-        showErrorToast("Gagal menghapus data");
-      }
-    }
-  };
-
   return (
     <>
       <TableRow sx={{ "& > *": { borderBottom: "unset" } }}>
@@ -343,25 +315,25 @@ function Row({
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell className="truncate">
-          {row.mataPelajaran.tingkat}
-          {" - "}
-          {row.mataPelajaran.pelajaran}
-        </TableCell>
+        <TableCell className="truncate">{row.mataPelajaran}</TableCell>
         <TableCell align="center">{token || "-"}</TableCell>
-        <TableCell align="center">{renderStatus()}</TableCell>
-        <TableCell align="center">{row.waktuPengerjaan} menit</TableCell>
-        <TableCell
-          align="center"
-          sx={{ display: "flex", flexWrap: "nowrap", gap: "8px" }}
-        >
-          <button
-            onClick={() => handleDelete(row)}
-            className="rounded bg-gray-100 p-2 hover:bg-gray-300"
+        <TableCell align="center">
+          <div
+            className={
+              statusColors[row.status] +
+              " px-2 py-1 rounded text-sm border inline-block"
+            }
           >
-            <Trash2Icon size={18} />
-          </button>
+            {row.status}
+          </div>
+          {row.hitungMundurAktif && row.sisaWaktuMulai != null && (
+            <div className="text-xs truncate text-blue-600 mt-1">
+              {row.sisaWaktuMulai} menit lagi terjadwal active
+            </div>
+          )}
         </TableCell>
+
+        <TableCell align="center">{row.waktuPengerjaan} menit</TableCell>
       </TableRow>
       {open && (
         <TableRow>
@@ -376,11 +348,6 @@ function Row({
               <Typography variant="body2">
                 Jam Selesai: {row.jamSelesai || "Belum ditentukan"}
               </Typography>
-              {row.countDownMenit && row.countDownMenit > 0 && (
-                <Typography variant="body2" color="primary">
-                  Waktu hitung mundur: {row.countDownMenit} menit
-                </Typography>
-              )}
             </Box>
           </TableCell>
         </TableRow>
@@ -392,8 +359,14 @@ function Row({
 function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
   return (
     <TableContainer component={Paper} sx={{ mb: 3 }}>
-      <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography variant="h6" fontWeight="medium">
+      <Toolbar
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          width: "100%",
+        }}
+      >
+        <Typography variant="h6" className="truncate" fontWeight="medium">
           {title}
         </Typography>
 
@@ -409,7 +382,7 @@ function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
 
       <Divider />
 
-      <Table>
+      <Table className="overflow-hidden ">
         <TableHead>
           <TableRow>
             <TableCell />
@@ -417,11 +390,10 @@ function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
             <TableCell align="center">Token</TableCell>
             <TableCell align="center">Status</TableCell>
             <TableCell align="center">Waktu Pengerjaan</TableCell>
-            <TableCell align="center">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {/* {data && data.length > 0 ? (
+          {data && data.length > 0 ? (
             data.map((row) => (
               <Row key={row.id} row={row} tingkatData={tingkatData} />
             ))
@@ -433,7 +405,7 @@ function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
                 </Typography>
               </TableCell>
             </TableRow>
-          )} */}
+          )}
         </TableBody>
       </Table>
     </TableContainer>

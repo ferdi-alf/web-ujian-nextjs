@@ -157,7 +157,8 @@ type SesiData struct {
 	JamMulai              string      `json:"jamMulai"`
 	JamSelesai            string      `json:"jamSelesai"`
 	HitungMundurSesiAktif bool        `json:"hitungMundurSesiAktif"`
-	SisaWaktuSesi         int         `json:"sisaWaktuSesi"` // dalam menit
+	SisaWaktuSesi         int         `json:"sisaWaktuSesi"`       // dalam menit
+	SisaWaktuResetUjian   int         `json:"sisaWaktuResetUjian"` // dalam menit
 	AdaSesiBerikutnya     bool        `json:"adaSesiBerikutnya"`
 	Ujian                 []UjianData `json:"ujian"`
 }
