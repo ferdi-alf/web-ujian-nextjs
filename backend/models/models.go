@@ -160,6 +160,8 @@ type SesiData struct {
 	SisaWaktuSesi         int         `json:"sisaWaktuSesi"`       // dalam menit
 	SisaWaktuResetUjian   int         `json:"sisaWaktuResetUjian"` // dalam menit
 	AdaSesiBerikutnya     bool        `json:"adaSesiBerikutnya"`
+	IsNextSesi            int         `json:"isNextSesi"`     // nomor sesi berikutnya (bukan boolean)
+	TampilkanUjian        bool        `json:"tampilkanUjian"` // indikator untuk menampilkan data ujian
 	Ujian                 []UjianData `json:"ujian"`
 }
 

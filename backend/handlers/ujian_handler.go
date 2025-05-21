@@ -227,6 +227,7 @@ for soalID, jawabanID := range request.Answers {
 }
 
 
+
 func (h *UjianHandler) GetHasilDetail(c *fiber.Ctx) error {
 	hasilID := c.Params("id")
 	log.Println("Menerima request untuk hasilID:", hasilID) // Debugging

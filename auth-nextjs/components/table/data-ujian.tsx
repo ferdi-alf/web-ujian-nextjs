@@ -49,6 +49,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/id";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import TableLoading from "../skeleton/Table-loading";
+import { number } from "zod";
 
 interface UjianData {
   id: string;
@@ -68,6 +69,7 @@ interface SesiData {
   isSesi: number;
   jamMulai: string;
   jamSelesai: string;
+  isNextSesi: number;
   hitungMundurSesiAktif: boolean;
   sisaWaktuSesi: number | null;
   adaSesiBerikutnya: boolean;
@@ -92,7 +94,7 @@ interface UjianTableProps {
   title: string;
   data: UjianData[];
   tingkatData?: TingkatData;
-  sesiAktif?: SesiData | null; // << tambahan ini
+  sesiAktif?: SesiData | null;
 }
 
 const ExamTracker = () => {
@@ -125,7 +127,6 @@ const ExamTracker = () => {
     fetchInitialData();
   }, [error]);
 
-  // Connect to WebSocket and handle data
   useEffect(() => {
     const HOST = process.env.NEXT_PUBLIC_API_URL_GOLANG?.replace("http://", "");
     if (!HOST) {
@@ -183,7 +184,6 @@ const ExamTracker = () => {
     };
   }, [error]);
 
-  // Process data from WebSocket
   const tingkatX = wsData?.X || [];
   const tingkatXI = wsData?.XI || [];
   const tingkatXII = wsData?.XII || [];
@@ -283,7 +283,7 @@ const ExamTracker = () => {
 
 // Status color mapping
 const statusColors: Record<string, string> = {
-  pending: "bg-gray-100 text-gray-800 border-gray-500",
+  pending: "bg-gray-100  text-gray-800 border-gray-500",
   active: "bg-green-100 text-green-800 border-green-400",
   selesai: "bg-purple-100 text-purple-800 border-purple-400",
 };
@@ -321,7 +321,7 @@ function Row({
           <div
             className={
               statusColors[row.status] +
-              " px-2 py-1 rounded text-sm border inline-block"
+              " px-2 py-1  rounded text-sm border inline-block"
             }
           >
             {row.status}
@@ -372,10 +372,21 @@ function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
 
         {/* Tampilkan disini alertnya  */}
         {sesiAktif?.hitungMundurSesiAktif &&
-          sesiAktif?.sisaWaktuSesi != null && (
-            <Alert severity="info" sx={{ mr: 2 }}>
-              Sesi {sesiAktif.isSesi} akan dimulai dalam{" "}
-              {sesiAktif.sisaWaktuSesi} menit lagi
+          sesiAktif?.sisaWaktuSesi !== null && (
+            <Alert severity="info" sx={{ mr: 2, mb: 2 }}>
+              {sesiAktif.isNextSesi ? (
+                // Tampilkan info sesi berikutnya
+                <>
+                  Sesi {sesiAktif.isSesi} akan dimulai dalam{" "}
+                  {sesiAktif.sisaWaktuSesi} menit lagi
+                </>
+              ) : (
+                // Tampilkan info sesi saat ini
+                <>
+                  Sesi {sesiAktif.isSesi} akan dimulai dalam{" "}
+                  {sesiAktif.sisaWaktuSesi} menit lagi
+                </>
+              )}
             </Alert>
           )}
       </Toolbar>

@@ -1,0 +1,93 @@
+{
+  "X": [],
+  "XI": [
+    {
+      "tanggal": "2025-05-20",
+      "sisaHari": 0,
+      "nextUjianAda": true,
+      "pelacakUjianHariAktif": false,
+      "sesiUjian": [
+        {
+          "id": "cmavzaeml00017kho1tjqcf4h",
+          "isSesi": 1,
+          "jamMulai": "09:00",
+          "jamSelesai": "10:45",
+          "hitungMundurSesiAktif": false,
+          "sisaWaktuSesi": 0,
+          "sisaWaktuResetUjian": 5,
+          "adaSesiBerikutnya": true,
+          "isNextSesi": 2,
+          "tampilkanUjian": true,
+          "ujian": []
+        },
+        {
+          "id": "cmavzaeml00027khobhzd5901",
+          "isSesi": 2,
+          "jamMulai": "11:10",
+          "jamSelesai": "12:00",
+          "hitungMundurSesiAktif": true,
+          "sisaWaktuSesi": 10,
+          "sisaWaktuResetUjian": 0,
+          "adaSesiBerikutnya": false,
+          "isNextSesi": 2,
+          "tampilkanUjian": false,
+          "ujian": []
+        }
+      ]
+    }
+  ],
+  "XII": []
+}
+
+{
+    "X": [],
+    "XI": [
+        {
+            "tanggal": "2025-05-20",
+            "sisaHari": 0,
+            "nextUjianAda": true,
+            "pelacakUjianHariAktif": false,
+            "sesiUjian": [
+                {
+                    "id": "cmavzaeml00027khobhzd5901",
+                    "isSesi": 2,
+                    "jamMulai": "11:10",
+                    "jamSelesai": "12:00",
+                    "hitungMundurSesiAktif": true,
+                    "sisaWaktuSesi": 4,
+                    "sisaWaktuResetUjian": 0,
+                    "adaSesiBerikutnya": false,
+                    "isNextSesi": 2,
+                    "tampilkanUjian": true,
+                    "ujian": [
+                        {
+                            "id": "cmavzd5r900057khosy48294f",
+                            "mataPelajaran": "BIndo",
+                            "jamMulai": "11:10",
+                            "jamSelesai": "11:25",
+                            "status": "pending",
+                            "token": "",
+                            "ujianBerikutnyaAda": true,
+                            "hitungMundurAktif": true,
+                            "sisaWaktuMulai": 4,
+                            "waktuPengerjaan": 15
+                        },
+                        {
+                            "id": "cmavzd5r900067khor7o2na23",
+                            "mataPelajaran": "Sejarah",
+                            "jamMulai": "11:25",
+                            "jamSelesai": "12:00",
+                            "status": "pending",
+                            "token": "",
+                            "ujianBerikutnyaAda": false,
+                            "hitungMundurAktif": true,
+                            "sisaWaktuMulai": 19,
+                            "waktuPengerjaan": 35
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "XII": []
+}

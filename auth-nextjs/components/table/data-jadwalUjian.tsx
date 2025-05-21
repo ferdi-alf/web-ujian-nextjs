@@ -413,7 +413,9 @@ function Row({ row }: { row: JadwalData }) {
       {loading && (
         <TableRow>
           <TableCell>
-            <LoadingSpinner />
+            <Box>
+              <LoadingSpinner />
+            </Box>
           </TableCell>
         </TableRow>
       )}
