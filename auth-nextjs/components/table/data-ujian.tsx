@@ -358,30 +358,30 @@ function Row({
 
 function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
   return (
-    <TableContainer component={Paper} sx={{ mb: 3 }}>
+    <TableContainer component={Paper} sx={{ mb: 3, width: "100%" }}>
+      {/* Toolbar tetap full lebar dan tidak ikut scroll */}
       <Toolbar
         sx={{
           display: "flex",
           justifyContent: "space-between",
           width: "100%",
+          flexWrap: "wrap", // biar responsif
+          gap: 2,
         }}
       >
         <Typography variant="h6" className="truncate" fontWeight="medium">
           {title}
         </Typography>
 
-        {/* Tampilkan disini alertnya  */}
         {sesiAktif?.hitungMundurSesiAktif &&
           sesiAktif?.sisaWaktuSesi !== null && (
-            <Alert severity="info" sx={{ mr: 2, mb: 2 }}>
+            <Alert severity="info" sx={{ whiteSpace: "nowrap" }}>
               {sesiAktif.isNextSesi ? (
-                // Tampilkan info sesi berikutnya
                 <>
                   Sesi {sesiAktif.isSesi} akan dimulai dalam{" "}
                   {sesiAktif.sisaWaktuSesi} menit lagi
                 </>
               ) : (
-                // Tampilkan info sesi saat ini
                 <>
                   Sesi {sesiAktif.isSesi} akan dimulai dalam{" "}
                   {sesiAktif.sisaWaktuSesi} menit lagi
@@ -393,32 +393,35 @@ function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
 
       <Divider />
 
-      <Table className="overflow-hidden ">
-        <TableHead>
-          <TableRow>
-            <TableCell />
-            <TableCell>Pelajaran</TableCell>
-            <TableCell align="center">Token</TableCell>
-            <TableCell align="center">Status</TableCell>
-            <TableCell align="center">Waktu Pengerjaan</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data && data.length > 0 ? (
-            data.map((row) => (
-              <Row key={row.id} row={row} tingkatData={tingkatData} />
-            ))
-          ) : (
+      {/* WRAPPER YANG BISA DI-SCROLL */}
+      <Box sx={{ width: "100%", overflowX: "auto" }}>
+        <Table sx={{ minWidth: 650 }} className="whitespace-nowrap">
+          <TableHead>
             <TableRow>
-              <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                <Typography color="text.secondary">
-                  Tidak ada ujian terjadwal untuk tingkat ini
-                </Typography>
-              </TableCell>
+              <TableCell />
+              <TableCell>Pelajaran</TableCell>
+              <TableCell align="center">Token</TableCell>
+              <TableCell align="center">Status</TableCell>
+              <TableCell align="center">Waktu Pengerjaan</TableCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {data && data.length > 0 ? (
+              data.map((row) => (
+                <Row key={row.id} row={row} tingkatData={tingkatData} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                  <Typography color="text.secondary">
+                    Tidak ada ujian terjadwal untuk tingkat ini
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Box>
     </TableContainer>
   );
 }

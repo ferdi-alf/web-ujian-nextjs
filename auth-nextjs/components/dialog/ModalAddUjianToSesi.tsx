@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 import { showErrorToast } from "@/components/toast/ToastSuccess";
-import { Autocomplete, TextField, Chip, CircularProgress } from "@mui/material";
+import { Autocomplete, TextField, Chip } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/id";
 import { addUjianToSesi } from "@/lib/crudUjian";
@@ -130,36 +130,30 @@ const ModalAddUjianToSesi = ({
           <p className="font-semibold my-2">Tambahkan 1 atau lebih ujian</p>
 
           <form onSubmit={handleSubmit}>
-            {isLoading ? (
-              <div className="flex justify-center items-center py-4">
-                <CircularProgress size={24} />
-                <span className="ml-2">Memuat data mata pelajaran...</span>
-              </div>
-            ) : (
-              <Autocomplete
-                multiple
-                disablePortal
-                id="mata-pelajaran-autocomplete"
-                options={data}
-                value={selectedMapel}
-                onChange={(event, newValue) => {
-                  setSelectedMapel(newValue);
-                }}
-                getOptionLabel={(option) =>
-                  `${option.tingkat} - ${option.pelajaran}`
-                }
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                filterSelectedOptions
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Pilih Mata Pelajaran"
-                    placeholder="Mata Pelajaran"
-                  />
-                )}
-                noOptionsText="Tidak ada mata pelajaran tersedia"
-              />
-            )}
+            <Autocomplete
+              multiple
+              disablePortal
+              id="mata-pelajaran-autocomplete"
+              options={data}
+              loading={isLoading}
+              value={selectedMapel}
+              onChange={(event, newValue) => {
+                setSelectedMapel(newValue);
+              }}
+              getOptionLabel={(option) =>
+                `${option.tingkat} - ${option.pelajaran}`
+              }
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              filterSelectedOptions
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Pilih Mata Pelajaran"
+                  placeholder="Mata Pelajaran"
+                />
+              )}
+              noOptionsText="Tidak ada mata pelajaran tersedia"
+            />
 
             {selectedMapel.length > 0 && (
               <div className="mt-5">

@@ -187,3 +187,23 @@ const (
 	TingkatXI  Tingkat = "XI"
 	TingkatXII Tingkat = "XII"
 )
+
+// UjianTerlewatDetail representasi detail ujian yang terlewat
+type UjianTerlewatDetail struct {
+	ID        string `json:"id"`
+	Pelajaran string `json:"pelajaran"`
+	Tingkat   string `json:"tingkat"`
+}
+
+type UjianTerlewat struct {
+	ID    string                `json:"id"`
+	Sesi  int                   `json:"sesi"`
+	Ujian []UjianTerlewatDetail `json:"ujian"`
+}
+
+// ResponseUjianTerlewat response struktur untuk API ujian terlewat
+type ResponseUjianTerlewat struct {
+	X   []UjianTerlewat `json:"X"`
+	XI  []UjianTerlewat `json:"XI"`
+	XII []UjianTerlewat `json:"XII"`
+}

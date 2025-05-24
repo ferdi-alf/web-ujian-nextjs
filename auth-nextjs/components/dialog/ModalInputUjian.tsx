@@ -45,13 +45,21 @@ const ModalInputUjian = () => {
       <DialogContent className="w-11/12 rounded-sm bg-white">
         <DialogHeader>
           <DialogTitle>Tambah Ujian</DialogTitle>
-          <DialogDescription>Tambahkan ujian</DialogDescription>
-          <form action={formAction}>
-            <FormInputUjian errors={state?.error} />
-            <DialogFooter>
-              <FormButton />
-            </DialogFooter>
-          </form>
+          <DialogDescription>
+            Perhatian, data yang tampil disini hanyalah data ujian yang sudah
+            lewat
+          </DialogDescription>
+          <DialogDescription>
+            Menambahkan ujian hanya digunakan jika ada siswa yang tertinggal
+            ujian atau ujian susulan. Lebih disarankan untuk menambahkan ujian
+            susulan setelah semua sesi berakhir
+          </DialogDescription>
+          {/* <form action={formAction}> */}
+          <FormInputUjian />
+          <DialogFooter>
+            <FormButton />
+          </DialogFooter>
+          {/* </form> */}
         </DialogHeader>
       </DialogContent>
     </Dialog>

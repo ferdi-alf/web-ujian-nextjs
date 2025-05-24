@@ -1,131 +1,296 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { getSoal } from "@/lib/crudSoal";
-import { MataPelajaran } from "@prisma/client";
-import { FormControl, FormHelperText, Input, InputLabel } from "@mui/material";
+  Autocomplete,
+  Chip,
+  styled,
+  TextField,
+  Typography,
+  Box,
+  CircularProgress,
+} from "@mui/material";
 
-const FormInputUjian = ({ errors }: { errors?: any }) => {
-  const [classes, setClasses] = React.useState<MataPelajaran[]>([]);
-  React.useEffect(() => {
-    const fetchData = async () => {
-      const UjianList = await getSoal();
-      setClasses(UjianList || []);
-    };
+export interface UjianTerlewatDetail {
+  id: string;
+  pelajaran: string;
+  tingkat: string;
+}
 
-    fetchData();
-  }, []);
+export interface UjianTerlewat {
+  id: string;
+  sesi: number;
+  ujian: UjianTerlewatDetail[];
+}
 
-  const groupClasses: Record<string, MataPelajaran[]> = classes.reduce(
-    (acc, pelajaran) => {
-      if (!acc[pelajaran.tingkat]) acc[pelajaran.tingkat] = [];
-      acc[pelajaran.tingkat].push(pelajaran);
-      return acc;
+export interface ResponseUjianTerlewat {
+  X: UjianTerlewat[];
+  XI: UjianTerlewat[];
+  XII: UjianTerlewat[];
+}
+
+// Untuk Autocomplete options
+export interface AutocompleteOption {
+  title: string;
+  firstLetter: string;
+  ujianId: string;
+  sesiId: string;
+  tingkat: string;
+  sesi: number;
+  pelajaran: string;
+}
+
+const GroupHeader = styled("div")(({ theme }) => ({
+  position: "sticky",
+  top: "-8px",
+  padding: "4px 10px",
+  color: theme.palette.primary.main,
+  backgroundColor: theme.palette.background.paper,
+  fontWeight: 600,
+  fontSize: "0.875rem",
+}));
+
+const GroupItems = styled("ul")({
+  padding: 0,
+});
+
+interface FormInputUjianProps {
+  onUjianSelected?: (selectedUjian: AutocompleteOption[]) => void;
+}
+
+const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [options, setOptions] = useState<AutocompleteOption[]>([]);
+  const [selectedUjian, setSelectedUjian] = useState<AutocompleteOption[]>([]);
+  console.log("Selected Ujian:", selectedUjian);
+
+  // Transform data dari API ke format yang dibutuhkan Autocomplete
+  const transformDataToOptions = useCallback(
+    (data: ResponseUjianTerlewat): AutocompleteOption[] => {
+      const options: AutocompleteOption[] = [];
+
+      // Function untuk memproses setiap tingkat
+      const processTingkat = (tingkatData: any[], tingkatName: string) => {
+        tingkatData.forEach((sesiData) => {
+          sesiData.ujian.forEach((ujian: any) => {
+            const groupName = `${tingkatName} - Sesi ${sesiData.sesi}`;
+            const title = `${ujian.pelajaran} (Sesi ${sesiData.sesi})`;
+
+            options.push({
+              title,
+              firstLetter: groupName,
+              ujianId: ujian.id,
+              sesiId: sesiData.id,
+              tingkat: tingkatName,
+              sesi: sesiData.sesi,
+              pelajaran: ujian.pelajaran,
+            });
+          });
+        });
+      };
+
+      // Proses semua tingkat
+      processTingkat(data.X, "Kelas X");
+      processTingkat(data.XI, "Kelas XI");
+      processTingkat(data.XII, "Kelas XII");
+
+      // Sort berdasarkan tingkat dan sesi
+      return options.sort((a, b) => {
+        if (a.tingkat !== b.tingkat) {
+          return a.tingkat.localeCompare(b.tingkat);
+        }
+        return a.sesi - b.sesi;
+      });
     },
-    {} as Record<string, MataPelajaran[]>
+    []
   );
 
-  const orderesTingkat = ["X", "XI", "XII"];
+  // Fetch data ujian terlewat
+  const fetchUjianTerlewat = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const sortedGroup = Object.entries(groupClasses).sort(
-    (a, b) => orderesTingkat.indexOf(a[0]) - orderesTingkat.indexOf(b[0])
-  );
+      const HOST = process.env.NEXT_PUBLIC_API_URL_GOLANG;
+      if (!HOST) {
+        throw new Error("NEXT_PUBLIC_API_URL_GOLANG not defined");
+      }
+
+      const response = await fetch(`${HOST}/api/data-ujian-terlewat`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data: ResponseUjianTerlewat = await response.json();
+
+      // Transform data ke format options
+      const transformedOptions = transformDataToOptions(data);
+      setOptions(transformedOptions);
+
+      // Log untuk debugging
+      console.log("Raw data from API:", data);
+      console.log("Transformed options:", transformedOptions);
+    } catch (err) {
+      console.error("Error fetching ujian terlewat:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat memuat data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [transformDataToOptions]);
+
+  useEffect(() => {
+    fetchUjianTerlewat();
+  }, [fetchUjianTerlewat]);
+
+  // Handle selection change
+  const handleSelectionChange = (
+    event: React.SyntheticEvent,
+    newValue: AutocompleteOption[]
+  ) => {
+    setSelectedUjian(newValue);
+    if (onUjianSelected) {
+      onUjianSelected(newValue);
+    }
+  };
+
+  // Custom render option untuk menampilkan informasi lebih detail
+  const renderOption = (props: any, option: AutocompleteOption) => {
+    return (
+      <Box
+        component="li"
+        {...props}
+        key={`${option.ujianId}-${option.sesiId}`}
+        sx={{
+          "&:hover": {
+            backgroundColor: "action.hover",
+          },
+          cursor: "pointer",
+          padding: "8px 16px !important",
+        }}
+      >
+        <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {option.pelajaran}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Kelas {option.tingkat} - Sesi {option.sesi}
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
+
+  // Custom render tags untuk selected items
+  const renderTags = (tagValue: AutocompleteOption[], getTagProps: any) =>
+    tagValue.map((option, index) => (
+      <Chip
+        {...getTagProps({ index })}
+        key={option.ujianId}
+        label={`${option.pelajaran} (${option.tingkat})`}
+        size="small"
+        color="primary"
+        variant="outlined"
+      />
+    ));
 
   return (
-    <>
-      <div className="flex flex-wrap gap-2">
-        {/* Mata Pelajaran */}
-        <div className="w-full">
-          <Select name="mataPelajaran">
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih soal mata pelajaran" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              {sortedGroup.map(([tingkat, pelajaranList]) => (
-                <SelectGroup key={tingkat}>
-                  <SelectLabel>Soal tingkat {tingkat}</SelectLabel>
-                  {pelajaranList.map((pelajaran) => (
-                    <SelectItem
-                      className="hover:bg-slate-100"
-                      key={pelajaran.id}
-                      value={pelajaran.id}
-                    >
-                      {pelajaran.tingkat} - {pelajaran.pelajaran}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors?.mataPelajaran && (
-            <p className="text-red-500 text-start text-sm mt-1">
-              {errors.mataPelajaran[0]}
-            </p>
-          )}
-        </div>
-
-        {/* Waktu Pengerjaan */}
-        <div className="w-full">
-          <Select name="waktuPengerjaan">
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih waktu pengerjaan" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup className="bg-white hove">
-                <SelectLabel>Waktu pengerjaan</SelectLabel>
-                <SelectItem className="hover:bg-slate-100" value="30">
-                  30 menit
-                </SelectItem>
-                <SelectItem className="hover:bg-slate-100" value="60">
-                  60 menit
-                </SelectItem>
-                <SelectItem className="hover:bg-slate-100" value="120">
-                  120 menit
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          {errors?.waktuPengerjaan && (
-            <p className="text-red-500 text-start text-sm mt-1">
-              {errors.waktuPengerjaan[0]}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Token */}
-      <FormControl
-        error={errors?.token}
-        fullWidth
-        className="mt-6"
-        variant="standard"
-      >
-        <InputLabel htmlFor="token">Token</InputLabel>
-        <Input
-          placeholder="Masukan Token"
-          name="token"
-          id="token"
-          aria-describedby="token-error-text"
-        />
-        <p className="text-xs text-start">
-          Token bersifat opsional atau dapat dikosongkan terlebih dahulu jika
-          belum ingin mengaktifkan ujian.
-        </p>
-        {errors?.token && (
-          <FormHelperText className="text-red-500 text-start text-sm mt-1">
-            {errors.token[0]}
-          </FormHelperText>
+    <Box sx={{ width: "100%" }}>
+      <Autocomplete
+        multiple
+        disablePortal={true}
+        loading={loading}
+        options={options}
+        value={selectedUjian}
+        onChange={handleSelectionChange}
+        groupBy={(option) => option.firstLetter}
+        getOptionLabel={(option) => option.title}
+        isOptionEqualToValue={(option, value) =>
+          option.ujianId === value.ujianId
+        }
+        renderOption={renderOption}
+        renderTags={renderTags}
+        renderGroup={(params) => (
+          <li key={params.key}>
+            <GroupHeader>{params.group}</GroupHeader>
+            <GroupItems>{params.children}</GroupItems>
+          </li>
         )}
-      </FormControl>
-    </>
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Pilih Ujian Terlewat"
+            placeholder="Ketik untuk mencari ujian..."
+            error={!!error}
+            helperText={
+              error ||
+              (loading
+                ? "Memuat data ujian terlewat..."
+                : `${options.length} ujian terlewat tersedia`)
+            }
+            InputProps={{
+              ...params.InputProps,
+              endAdornment: (
+                <>
+                  {loading ? (
+                    <CircularProgress color="inherit" size={20} />
+                  ) : null}
+                  {params.InputProps.endAdornment}
+                </>
+              ),
+            }}
+          />
+        )}
+        sx={{
+          width: "100%",
+          minWidth: 300,
+          "& .MuiAutocomplete-tag": {
+            maxWidth: "300px",
+          },
+        }}
+        filterOptions={(options, { inputValue }) => {
+          // Custom filter untuk pencarian yang lebih fleksibel
+          const filterValue = inputValue.toLowerCase();
+          return options.filter(
+            (option) =>
+              option.pelajaran.toLowerCase().includes(filterValue) ||
+              option.tingkat.toLowerCase().includes(filterValue) ||
+              option.sesi.toString().includes(filterValue) ||
+              option.title.toLowerCase().includes(filterValue)
+          );
+        }}
+        noOptionsText={
+          loading
+            ? "Memuat data..."
+            : options.length === 0
+            ? "Tidak ada ujian terlewat"
+            : "Tidak ditemukan"
+        }
+      />
+
+      {/* Display selected items info */}
+      {selectedUjian.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Ujian terpilih: {selectedUjian.length} item
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {selectedUjian.map((ujian) => (
+              <Chip
+                key={ujian.ujianId}
+                label={`${ujian.pelajaran} (${ujian.tingkat} - Sesi ${ujian.sesi})`}
+                size="small"
+                variant="filled"
+                color="secondary"
+              />
+            ))}
+          </Box>
+        </Box>
+      )}
+    </Box>
   );
 };
 
