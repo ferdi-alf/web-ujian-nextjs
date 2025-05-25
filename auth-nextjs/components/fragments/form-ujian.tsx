@@ -123,11 +123,9 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
 
       const data: ResponseUjianTerlewat = await response.json();
 
-      // Transform data ke format options
       const transformedOptions = transformDataToOptions(data);
       setOptions(transformedOptions);
 
-      // Log untuk debugging
       console.log("Raw data from API:", data);
       console.log("Transformed options:", transformedOptions);
     } catch (err) {

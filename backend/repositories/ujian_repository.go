@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"time"
 )
@@ -224,6 +225,19 @@ func parseFlexibleDate(dateStr string) (time.Time, error) {
     }
     
     return time.Time{}, fmt.Errorf("cannot parse date: %s", dateStr)
+}
+
+// parseTime membantu parsing waktu - sama dengan di ujian tracker
+func parseTime(timeStr string) (time.Time, error) {
+    now := time.Now()
+    timeFormat := "15:04"
+    t, err := time.Parse(timeFormat, timeStr)
+    if err != nil {
+        return time.Time{}, err
+    }
+    
+    location := time.Local
+    return time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, location), nil
 }
 
 // PERBAIKAN: Update bagian parsing dalam GetUjianTerlewat
@@ -450,22 +464,22 @@ func processUjianForDate(db *sql.DB, now time.Time, tanggal time.Time, ujianList
     
     log.Printf("DEBUG: Processing today's date")
     
-    // LOGIKA UTAMA: Untuk hari ini, ambil sesi yang SEDANG DITAMPILKAN dari tracking
-    displayedSesiInfo := getDisplayedSesiFromTracking(currentTrackingData, tingkat, tanggal)
+    // LOGIKA UTAMA: Untuk hari ini, gunakan logika transisi sesi yang sama dengan ujian tracker
+    sesiTransisiInfo := analyzeSesiTransition(ujianList, now)
     
-    log.Printf("DEBUG: Displayed sesi info: %+v", displayedSesiInfo)
+    log.Printf("DEBUG: Sesi transition info: %+v", sesiTransisiInfo)
     
     // Cek setiap sesi untuk ujian terlewat
     for _, sesi := range sesiNumbers {
         ujianInSesi := sesiMap[sesi]
         
-        // KUNCI UTAMA: Cek apakah sesi ini sedang ditampilkan di tracking
-        isSesiDisplayed := isSesiCurrentlyDisplayed(sesi, displayedSesiInfo)
+        // KUNCI UTAMA: Cek apakah sesi ini masih dalam masa tampil berdasarkan logika transisi
+        isSesiMasihTampil := isSesiStillDisplayed(sesi, sesiTransisiInfo, ujianInSesi, now)
         
-        log.Printf("DEBUG: Sesi %d - isDisplayed: %t", sesi, isSesiDisplayed)
+        log.Printf("DEBUG: Sesi %d - masih tampil: %t", sesi, isSesiMasihTampil)
         
-        // Jika sesi TIDAK sedang ditampilkan DAN sudah selesai, ambil ujian terlewat
-        if !isSesiDisplayed {
+        // Jika sesi TIDAK tampil lagi DAN sudah selesai, ambil ujian terlewat
+        if !isSesiMasihTampil {
             var ujianTerlewatDetail []models.UjianTerlewatDetail
             
             for _, ujian := range ujianInSesi {
@@ -481,7 +495,7 @@ func processUjianForDate(db *sql.DB, now time.Time, tanggal time.Time, ujianList
             }
             
             if len(ujianTerlewatDetail) > 0 {
-                log.Printf("DEBUG: Adding ujian terlewat from sesi %d (not displayed)", sesi)
+                log.Printf("DEBUG: Adding ujian terlewat from sesi %d (not displayed anymore)", sesi)
                 result = append(result, models.UjianTerlewat{
                     ID:    ujianInSesi[0].SesiID,
                     Sesi:  sesi,
@@ -496,66 +510,162 @@ func processUjianForDate(db *sql.DB, now time.Time, tanggal time.Time, ujianList
     return result
 }
 
-// PERBAIKAN: Struktur untuk menyimpan info sesi yang ditampilkan
-type DisplayedSesiInfo struct {
-    SesiNumbers      []int  // Nomor sesi yang sedang ditampilkan
-    TampilkanUjian   bool   // Apakah ujian sedang ditampilkan
+// PERBAIKAN: Struktur untuk menyimpan info transisi sesi
+type SesiTransitionInfo struct {
+    SesiAktifIndex       int    // Index sesi yang sedang aktif (-1 jika tidak ada)
+    SesiBerikutnyaIndex  int    // Index sesi berikutnya (-1 jika tidak ada)
+    SesiTerakhirIndex    int    // Index sesi terakhir yang sudah selesai (-1 jika tidak ada)
+    IsLastSession        bool   // Apakah sesi terakhir adalah sesi final hari itu
+    SesiNumbers          []int  // Semua nomor sesi yang tersedia
+    SesiDataMap          map[int][]UjianData // Map sesi ke data ujian
 }
 
-// PERBAIKAN: Fungsi untuk mendapatkan sesi yang sedang ditampilkan dari data tracking
-func getDisplayedSesiFromTracking(currentTrackingData map[models.Tingkat][]models.TingkatData, 
-    tingkat models.Tingkat, tanggal time.Time) DisplayedSesiInfo {
-    
-    info := DisplayedSesiInfo{
-        SesiNumbers:    []int{},
-        TampilkanUjian: false,
+// PERBAIKAN: Fungsi untuk menganalisis transisi sesi (sama logika dengan ujian tracker)
+func analyzeSesiTransition(ujianList []UjianData, now time.Time) SesiTransitionInfo {
+    info := SesiTransitionInfo{
+        SesiAktifIndex:      -1,
+        SesiBerikutnyaIndex: -1,
+        SesiTerakhirIndex:   -1,
+        IsLastSession:       false,
+        SesiNumbers:         []int{},
+        SesiDataMap:         make(map[int][]UjianData),
     }
     
-    if currentTrackingData == nil {
-        log.Printf("DEBUG: No current tracking data available")
+    // Group by sesi
+    sesiMap := make(map[int][]UjianData)
+    for _, ujian := range ujianList {
+        sesiMap[ujian.Sesi] = append(sesiMap[ujian.Sesi], ujian)
+    }
+    
+    // Get sorted sesi numbers
+    var sesiNumbers []int
+    for sesi := range sesiMap {
+        sesiNumbers = append(sesiNumbers, sesi)
+    }
+    sort.Ints(sesiNumbers)
+    
+    info.SesiNumbers = sesiNumbers
+    info.SesiDataMap = sesiMap
+    
+    if len(sesiNumbers) == 0 {
         return info
     }
     
-    tingkatData, exists := currentTrackingData[tingkat]
-    if !exists {
-        log.Printf("DEBUG: No tracking data for tingkat %s", tingkat)
-        return info
-    }
-    
-    todayStr := tanggal.Format("2006-01-02")
-    
-    // Cari data untuk tanggal yang sesuai
-    for _, data := range tingkatData {
-        if data.Tanggal == todayStr {
-            log.Printf("DEBUG: Found tracking data for date %s, tingkat %s", todayStr, tingkat)
-            
-            // Ambil sesi yang sedang ditampilkan berdasarkan tampilkanUjian
-            for _, sesi := range data.SesiUjian {
-                if sesi.TampilkanUjian {
-                    info.SesiNumbers = append(info.SesiNumbers, sesi.IsSesi)
-                    info.TampilkanUjian = true
-                    log.Printf("DEBUG: Sesi %d is currently displayed (tampilkanUjian: true)", sesi.IsSesi)
-                }
+    // Analisis status setiap sesi
+    for i, sesi := range sesiNumbers {
+        ujianInSesi := sesiMap[sesi]
+        if len(ujianInSesi) == 0 {
+            continue
+        }
+        
+        // Ambil waktu sesi dari ujian pertama (asumsi semua ujian dalam sesi sama)
+        sesiMulai, errMulai := parseTime(ujianInSesi[0].SesiJamMulai)
+        sesiSelesai, errSelesai := parseTime(ujianInSesi[0].SesiJamSelesai)
+        
+        if errMulai != nil || errSelesai != nil {
+            continue
+        }
+        
+        log.Printf("DEBUG: Analyzing sesi %d: mulai=%s, selesai=%s, now=%s", 
+            sesi, sesiMulai.Format("15:04"), sesiSelesai.Format("15:04"), now.Format("15:04"))
+        
+        // Cek status sesi
+        if now.After(sesiMulai) && now.Before(sesiSelesai) {
+            // Sesi sedang aktif
+            info.SesiAktifIndex = i
+            log.Printf("DEBUG: Sesi %d is currently active", sesi)
+        } else if now.Before(sesiMulai) {
+            // Sesi belum mulai
+            if info.SesiBerikutnyaIndex == -1 {
+                info.SesiBerikutnyaIndex = i
+                log.Printf("DEBUG: Sesi %d is next session", sesi)
             }
-            break
+        } else if now.After(sesiSelesai) {
+            // Sesi sudah selesai
+            info.SesiTerakhirIndex = i
+            log.Printf("DEBUG: Sesi %d is finished", sesi)
         }
     }
     
-    log.Printf("DEBUG: Final displayed sesi info - numbers: %v, tampilkanUjian: %t", 
-        info.SesiNumbers, info.TampilkanUjian)
+    // Tentukan apakah sesi terakhir adalah sesi final
+    if info.SesiTerakhirIndex != -1 {
+        info.IsLastSession = (info.SesiTerakhirIndex == len(sesiNumbers)-1)
+        log.Printf("DEBUG: Last session index: %d, is final session: %t", 
+            info.SesiTerakhirIndex, info.IsLastSession)
+    }
     
     return info
 }
 
-// PERBAIKAN: Fungsi untuk mengecek apakah sesi sedang ditampilkan
-func isSesiCurrentlyDisplayed(sesiNumber int, displayedInfo DisplayedSesiInfo) bool {
-    if !displayedInfo.TampilkanUjian {
+// PERBAIKAN: Fungsi untuk mengecek apakah sesi masih ditampilkan (logika sama dengan ujian tracker)
+func isSesiStillDisplayed(sesiNumber int, transisiInfo SesiTransitionInfo, ujianInSesi []UjianData, now time.Time) bool {
+    if len(ujianInSesi) == 0 {
         return false
     }
     
-    for _, displayedSesi := range displayedInfo.SesiNumbers {
-        if sesiNumber == displayedSesi {
-            return true
+    // Cari index sesi ini
+    sesiIndex := -1
+    for i, s := range transisiInfo.SesiNumbers {
+        if s == sesiNumber {
+            sesiIndex = i
+            break
+        }
+    }
+    
+    if sesiIndex == -1 {
+        return false
+    }
+    
+    // Jika ada sesi aktif, hanya sesi aktif yang tampil
+    if transisiInfo.SesiAktifIndex != -1 {
+        return sesiIndex == transisiInfo.SesiAktifIndex
+    }
+    
+    // Jika tidak ada sesi aktif tapi ada sesi berikutnya
+    if transisiInfo.SesiBerikutnyaIndex != -1 {
+        sesiBerikutnya := transisiInfo.SesiNumbers[transisiInfo.SesiBerikutnyaIndex]
+        ujianSesiBerikutnya := transisiInfo.SesiDataMap[sesiBerikutnya]
+        
+        if len(ujianSesiBerikutnya) > 0 {
+            sesiBerikutnyaMulai, err := parseTime(ujianSesiBerikutnya[0].SesiJamMulai)
+            if err != nil {
+                return false
+            }
+            
+            sisaWaktuKeSesiBerikutnya := int(math.Ceil(sesiBerikutnyaMulai.Sub(now).Minutes()))
+            
+            // LOGIKA KUNCI: Sama dengan ujian tracker
+            if sisaWaktuKeSesiBerikutnya <= 5 {
+                // Kurang dari 5 menit ke sesi berikutnya, tampilkan sesi berikutnya
+                return sesiIndex == transisiInfo.SesiBerikutnyaIndex
+            } else if transisiInfo.SesiTerakhirIndex != -1 && sesiIndex == transisiInfo.SesiTerakhirIndex {
+                // Lebih dari 5 menit, tampilkan sesi terakhir yang sudah selesai
+                if transisiInfo.IsLastSession {
+                    // Sesi terakhir adalah sesi final, tampilkan selama 2 jam
+                    sesiSelesai, err := parseTime(ujianInSesi[0].SesiJamSelesai)
+                    if err != nil {
+                        return false
+                    }
+                    
+                    menitSetelahSelesai := int(now.Sub(sesiSelesai).Minutes())
+                    return menitSetelahSelesai <= 120 // 2 jam
+                } else {
+                    // Sesi terakhir bukan sesi final, tampilkan sampai 5 menit sebelum sesi berikutnya
+                    return sisaWaktuKeSesiBerikutnya > 5
+                }
+            }
+        }
+    } else if transisiInfo.SesiTerakhirIndex != -1 && sesiIndex == transisiInfo.SesiTerakhirIndex {
+        // Tidak ada sesi berikutnya, cek sesi terakhir
+        if transisiInfo.IsLastSession {
+            // Sesi terakhir adalah sesi final, tampilkan selama 2 jam
+            sesiSelesai, err := parseTime(ujianInSesi[0].SesiJamSelesai)
+            if err != nil {
+                return false
+            }
+            
+            menitSetelahSelesai := int(now.Sub(sesiSelesai).Minutes())
+            return menitSetelahSelesai <= 120 // 2 jam
         }
     }
     
@@ -582,7 +692,7 @@ func isUjianSelesai(now time.Time, tanggal time.Time, ujian UjianData) bool {
         return false
     }
     
-    ujianSelesai, err := parseTimeToday(now, ujian.UjianJamSelesai)
+    ujianSelesai, err := parseTime(ujian.UjianJamSelesai)
     if err != nil {
         log.Printf("DEBUG: Cannot parse end time for ujian %s: %v", ujian.UjianID, err)
         return false
@@ -600,22 +710,4 @@ func isToday(now time.Time, tanggalUjian time.Time) bool {
     return now.Year() == tanggalUjian.Year() &&
         now.Month() == tanggalUjian.Month() &&
         now.Day() == tanggalUjian.Day()
-}
-
-func parseTimeToday(now time.Time, timeStr string) (time.Time, error) {
-    var t time.Time
-    var err error
-    
-    // Coba parse dengan format HH:MM:SS
-    t, err = time.Parse("15:04:05", timeStr)
-    if err != nil {
-        // Jika gagal, coba dengan format HH:MM
-        t, err = time.Parse("15:04", timeStr)
-        if err != nil {
-            return time.Time{}, fmt.Errorf("cannot parse time %s: %v", timeStr, err)
-        }
-    }
-    
-    return time.Date(now.Year(), now.Month(), now.Day(), 
-        t.Hour(), t.Minute(), t.Second(), 0, time.Local), nil
 }

@@ -51,6 +51,7 @@ func main() {
    
     app.Post("/api/ujian/submit", ujianHandler.SubmitUjian)
     app.Get("/api/data-ujian-terlewat", handlers.GetUjianTerlewat(db))
+    // app.Post("/api/data-ujian-terlewat")
 
     app.Get("/api/hasil/:id", ujianHandler.GetHasilDetail)
     app.Get("/api/ujian/download", func(c *fiber.Ctx) error {

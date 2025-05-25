@@ -2,38 +2,39 @@
   "X": [],
   "XI": [
     {
-      "tanggal": "2025-05-22",
-      "sisaHari": 0,
+      "tanggal": "2025-05-26",
+      "sisaHari": 1,
       "nextUjianAda": true,
-      "pelacakUjianHariAktif": false,
+      "pelacakUjianHariAktif": true,
       "sesiUjian": [
         {
-          "id": "cmaym8f8l00037k1c4zbjy3nt",
-          "isSesi": 1,
-          "jamMulai": "21:50",
-          "jamSelesai": "22:30",
+          "id": "cmb3wft8o000k7ktgtgj83bi5",
+          "isSesi": 2,
+          "jamMulai": "00:15",
+          "jamSelesai": "00:20",
           "hitungMundurSesiAktif": true,
-          "sisaWaktuSesi": 6,
-          "sisaWaktuResetUjian": 1,
-          "adaSesiBerikutnya": true,
-          "isNextSesi": 2,
+          "sisaWaktuSesi": 5,
+          "sisaWaktuResetUjian": 0,
+          "adaSesiBerikutnya": false,
+          "isNextSesi": 0,
           "tampilkanUjian": true,
           "ujian": [
             {
-              "id": "cmaym9xe000057k1clx52wx10",
-              "mataPelajaran": "KK-RPL",
-              "jamMulai": "21:50",
-              "jamSelesai": "22:30",
-              "status": "selesai",
+              "id": "cmb3wh60w000m7ktg1te6h96j",
+              "mataPelajaran": "BIndo",
+              "jamMulai": "00:15",
+              "jamSelesai": "00:20",
+              "status": "pending",
               "token": "",
               "ujianBerikutnyaAda": false,
-              "hitungMundurAktif": false,
-              "sisaWaktuMulai": 0,
-              "waktuPengerjaan": 40
+              "hitungMundurAktif": true,
+              "sisaWaktuMulai": 5,
+              "waktuPengerjaan": 5
             }
           ]
         }
       ]
     }
-  ]
+  ],
+  "XII": []
 }

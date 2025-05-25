@@ -96,7 +96,7 @@ const FormJadwalUjian = ({ state }: { state?: ErrorField }) => {
             <option value="2">2 Sesi</option>
             <option value="3">3 Sesi</option>
           </select>
-          <p className="text-sm text-red-500">{state?.tingkat}</p>
+          <p className="text-sm text-red-500">{state?.jumlahSesi}</p>
         </div>
       </div>
     </>

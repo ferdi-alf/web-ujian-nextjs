@@ -189,7 +189,11 @@ const ExamTracker = () => {
   const tingkatXII = wsData?.XII || [];
 
   const renderAlertUjian = () => {
-    if (tingkatX.some((ujian) => ujian.sisaHari > 0)) {
+    const now = dayjs().locale("id").startOf("day");
+    if (
+      tingkatX.some((ujian) => ujian.sisaHari > 0) &&
+      tingkatX.some((ujian) => ujian.tanggal !== now.format("YYYY-MM-DD"))
+    ) {
       const ujian = tingkatX.find((u) => u.sisaHari > 0);
       return (
         <Alert severity="info" className="mb-2">
@@ -199,7 +203,10 @@ const ExamTracker = () => {
       );
     }
 
-    if (tingkatXI.some((ujian) => ujian.sisaHari > 0)) {
+    if (
+      tingkatXI.some((ujian) => ujian.sisaHari > 0) &&
+      tingkatX.some((ujian) => ujian.tanggal !== now.format("YYYY-MM-DD"))
+    ) {
       const ujian = tingkatXI.find((u) => u.sisaHari > 0);
       return (
         <Alert severity="info" className="mb-2">
@@ -209,7 +216,10 @@ const ExamTracker = () => {
       );
     }
 
-    if (tingkatXII.some((ujian) => ujian.sisaHari > 0)) {
+    if (
+      tingkatXII.some((ujian) => ujian.sisaHari > 0) &&
+      tingkatX.some((ujian) => ujian.tanggal !== now.format("YYYY-MM-DD"))
+    ) {
       const ujian = tingkatXII.find((u) => u.sisaHari > 0);
       return (
         <Alert severity="info" className="mb-2">
@@ -321,7 +331,7 @@ function Row({
           <div
             className={
               statusColors[row.status] +
-              " px-2 py-1  rounded text-sm border inline-block"
+              " px-2 py-1 capitalize font-medium  rounded text-sm border inline-block"
             }
           >
             {row.status}
@@ -376,9 +386,9 @@ function UjianTable({ title, data, tingkatData, sesiAktif }: UjianTableProps) {
         {sesiAktif?.hitungMundurSesiAktif &&
           sesiAktif?.sisaWaktuSesi !== null && (
             <Alert severity="info" sx={{ whiteSpace: "nowrap" }}>
-              {sesiAktif.isNextSesi ? (
+              {sesiAktif.isNextSesi !== 0 ? (
                 <>
-                  Sesi {sesiAktif.isSesi} akan dimulai dalam{" "}
+                  Sesi {sesiAktif.isNextSesi} akan dimulai dalam{" "}
                   {sesiAktif.sisaWaktuSesi} menit lagi
                 </>
               ) : (

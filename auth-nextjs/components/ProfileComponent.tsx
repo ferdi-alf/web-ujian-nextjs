@@ -80,7 +80,7 @@ const ProfileComponent = ({ onFileChange }: ProfileComponentProps) => {
                     ? user.data.image
                     : user?.data.role === "PROKTOR"
                     ? "/avatar.png"
-                    : "/avatar-admin"
+                    : "/avatar-admin.jpg"
                 } // Fallback lainnya}
                 alt="avatar"
               />

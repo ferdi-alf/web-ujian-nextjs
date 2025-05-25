@@ -4,10 +4,12 @@ package services
 import (
 	"backend/models"
 	"backend/repositories"
+	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"log"
 	"math"
+	"sort"
 	"time"
 )
 
@@ -23,6 +25,51 @@ func NewUjianTracker(db *sql.DB, broadcast chan models.ResponseDataUjian) *Ujian
 		DB:       db,
 		Broadcast: broadcast,
 	}
+}
+
+func generateRandomToken(length int) (string, error) {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, length)
+
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("error generating random token: %w", err)
+	}
+
+	for i := range b {
+		b[i] = charset[b[i]%byte(len(charset))]
+	}
+
+	return string(b), nil
+}
+
+func updateUjianStatus(db *sql.DB, ujian *models.UjianData, newStatus string) error {
+	start := time.Now() // ⏱️ Mulai hitung waktu
+
+	var token string
+	if newStatus == "active" {
+		var err error
+		token, err = generateRandomToken(5)
+		if err != nil {
+			log.Printf("Error generating token: %v", err)
+			token = ""
+		}
+	} else {
+		token = ujian.Token
+	}
+
+	err := repositories.UpdateUjianStatus(db, ujian.ID, newStatus, token)
+	if err != nil {
+		return fmt.Errorf("error updating ujian status: %w", err)
+	}
+
+	ujian.Status = newStatus
+	ujian.Token = token
+
+	duration := time.Since(start) // ⏱️ Hitung durasi
+	log.Printf("Ujian %s status updated to %s with token %s (took %s)", ujian.ID, newStatus, token, duration)
+
+	return nil
 }
 
 // parseTime membantu parsing waktu
@@ -60,422 +107,367 @@ func (ut *UjianTracker) UpdateTrackingData() {
 	fmt.Printf("Current time: %s\n", now.Format("2006-01-02 15:04:05 MST"))
 	
 	// Proses data untuk tiap tingkat
-for tingkat, tingkatDataList := range jadwalData {
-	for _, tingkatData := range tingkatDataList {
-		// Parse tanggal jadwal
-		tanggal, err := time.Parse("2006-01-02", tingkatData.Tanggal)
-		if err != nil {
-			log.Printf("Error parsing tanggal: %v", err)
-			continue
-		}
+	for tingkat, tingkatDataList := range jadwalData {
+		// PERBAIKAN: Urutkan data berdasarkan tanggal untuk logika pelacakan yang benar
+		sort.Slice(tingkatDataList, func(i, j int) bool {
+			tanggalI, _ := time.Parse("2006-01-02", tingkatDataList[i].Tanggal)
+			tanggalJ, _ := time.Parse("2006-01-02", tingkatDataList[j].Tanggal)
+			return tanggalI.Before(tanggalJ)
+		})
 		
-		// PERBAIKAN: Pastikan tanggal juga menggunakan zona waktu yang sama
-		tanggal = tanggal.In(time.Local)
+		// PERBAIKAN: Variabel untuk melacak status pelacakan ujian
+		var ujianPertamaDalam3Hari *models.TingkatData = nil
+		var adaUjianSetelahUjianPertama bool = false
 		
-		// Tandai nextUjianAda dan pelacakUjianHariAktif
-		sisaHari := int(math.Ceil(tanggal.Sub(now).Hours() / 24))
-		if sisaHari < 0 {
-			sisaHari = 0
-		}
-		
-		tingkatData.SisaHari = sisaHari
-		tingkatData.NextUjianAda = true
-		tingkatData.PelacakUjianHariAktif = sisaHari <= 3 && sisaHari > 0
-		
-		// Jika hari ini, hitung status sesi dan ujian
-		if tanggal.Day() == now.Day() && tanggal.Month() == now.Month() && tanggal.Year() == now.Year() {
-			// Identifikasi sesi aktif atau yang akan aktif berdasarkan waktu sekarang
-			var sesiAktifIndex int = -1
-			var sesiBerikutnyaIndex int = -1
-			var sesiTerakhirSelesaiIndex int = -1
-			var sesiBaruSelesaiIndex int = -1 // Tambahan: untuk sesi yang baru saja selesai
-			var sesiSebelumBerikutnya int = -1 // Tambahan: untuk sesi sebelum sesi berikutnya
+		// Cari ujian pertama dalam 3 hari ke depan
+		for i := range tingkatDataList {
+			tingkatData := &tingkatDataList[i]
 			
-			// Cek status semua sesi terlebih dahulu
-			for i := range tingkatData.SesiUjian {
-				sesi := &tingkatData.SesiUjian[i]
-				
-				if sesi.JamMulai != "" && sesi.JamSelesai != "" {
-					sesiMulai, errMulai := parseTime(sesi.JamMulai)
-					sesiSelesai, errSelesai := parseTime(sesi.JamSelesai)
-					
-					if errMulai != nil || errSelesai != nil {
-						continue
-					}
-
-					// PERBAIKAN: Tambahkan debug log untuk memastikan parsing waktu benar
-					fmt.Printf("Debug - Sesi %d: Mulai=%s, Selesai=%s\n", 
-						sesi.IsSesi, 
-						sesiMulai.Format("15:04:05"), 
-						sesiSelesai.Format("15:04:05"))
-					
-					// Jika waktu sekarang berada antara jam mulai dan selesai, ini adalah sesi aktif
-					if now.After(sesiMulai) && now.Before(sesiSelesai) {
-						sesiAktifIndex = i
-						fmt.Printf("Debug - Sesi aktif ditemukan: %d\n", sesi.IsSesi)
-					} else if now.Before(sesiMulai) {
-						// Jika waktu sekarang sebelum jam mulai, ini adalah sesi berikutnya
-						if sesiBerikutnyaIndex == -1 {
-							sesiBerikutnyaIndex = i
-						} else {
-							// Bandingkan dengan sesi berikutnya yang sudah ditemukan sebelumnya
-							waktuBerikutnyaSebelumnya, errBerikutnya := parseTime(tingkatData.SesiUjian[sesiBerikutnyaIndex].JamMulai)
-							if errBerikutnya == nil && sesiMulai.Before(waktuBerikutnyaSebelumnya) {
-								sesiBerikutnyaIndex = i
-							}
-						}
-					} else if now.After(sesiSelesai) {
-						// Cari sesi terakhir yang sudah selesai
-						if sesiTerakhirSelesaiIndex == -1 || i > sesiTerakhirSelesaiIndex {
-							sesiTerakhirSelesaiIndex = i
-						}
-						
-						// Cek apakah sesi ini baru saja selesai (dalam 60 menit terakhir)
-						menitSetelahSelesai := int(now.Sub(sesiSelesai).Minutes())
-						if menitSetelahSelesai <= 60 {
-							sesiBaruSelesaiIndex = i
-						}
-						
-						// Identifikasi sesi sebelum sesi berikutnya (untuk transisi)
-						if sesiBerikutnyaIndex != -1 && i < sesiBerikutnyaIndex {
-							if sesiSebelumBerikutnya == -1 || i > sesiSebelumBerikutnya {
-								sesiSebelumBerikutnya = i
-							}
-						}
-					}
+			// Parse tanggal jadwal
+			tanggal, err := time.Parse("2006-01-02", tingkatData.Tanggal)
+			if err != nil {
+				log.Printf("Error parsing tanggal: %v", err)
+				continue
+			}
+			
+			// PERBAIKAN: Pastikan tanggal juga menggunakan zona waktu yang sama
+			tanggal = tanggal.In(time.Local)
+			
+			// Hitung sisa hari
+			sisaHari := int(math.Ceil(tanggal.Sub(now).Hours() / 24))
+			if sisaHari < 0 {
+				sisaHari = 0
+			}
+			
+			// Cari ujian pertama dalam 3 hari ke depan
+			if ujianPertamaDalam3Hari == nil && sisaHari > 0 && sisaHari <= 3 {
+				ujianPertamaDalam3Hari = tingkatData
+			}
+			
+			// Cek apakah ada ujian setelah ujian pertama
+			if ujianPertamaDalam3Hari != nil && tingkatData != ujianPertamaDalam3Hari {
+				tanggalPertama, _ := time.Parse("2006-01-02", ujianPertamaDalam3Hari.Tanggal)
+				if tanggal.After(tanggalPertama) && sisaHari <= 3 {
+					adaUjianSetelahUjianPertama = true
 				}
 			}
+		}
+		
+		for i := range tingkatDataList {
+			tingkatData := &tingkatDataList[i]
 			
-			if sesiBaruSelesaiIndex != -1 {
-				fmt.Println("Sesi baru saja selesai:", tingkatData.SesiUjian[sesiBaruSelesaiIndex])
+			// Parse tanggal jadwal
+			tanggal, err := time.Parse("2006-01-02", tingkatData.Tanggal)
+			if err != nil {
+				log.Printf("Error parsing tanggal: %v", err)
+				continue
 			}
 			
-			// Proses sesi satu per satu
-			for i := range tingkatData.SesiUjian {
-				sesi := &tingkatData.SesiUjian[i]
+			// PERBAIKAN: Pastikan tanggal juga menggunakan zona waktu yang sama
+			tanggal = tanggal.In(time.Local)
+			
+			// Hitung sisa hari
+			sisaHari := int(math.Ceil(tanggal.Sub(now).Hours() / 24))
+			if sisaHari < 0 {
+				sisaHari = 0
+			}
+			
+			tingkatData.SisaHari = sisaHari
+			
+			// PERBAIKAN: Logika nextUjianAda dan pelacakUjianHariAktif
+			if sisaHari > 0 && sisaHari <= 3 {
+				// Ada ujian dalam 3 hari ke depan
+				tingkatData.NextUjianAda = true
 				
-				// Inisialisasi nilai default
-				sesi.IsNextSesi = 0
-				sesi.TampilkanUjian = false
+				// PERBAIKAN: pelacakUjianHariAktif hanya aktif untuk ujian PERTAMA dalam 3 hari
+				// dan TIDAK ada ujian lain setelahnya dalam 3 hari
+				if tingkatData == ujianPertamaDalam3Hari && !adaUjianSetelahUjianPertama {
+					tingkatData.PelacakUjianHariAktif = true
+				} else {
+					tingkatData.PelacakUjianHariAktif = false
+				}
+			} else if sisaHari == 0 {
+				// Ujian hari ini
+				tingkatData.NextUjianAda = true
+				tingkatData.PelacakUjianHariAktif = false
+			} else {
+				// Tidak ada ujian dalam 3 hari ke depan
+				tingkatData.NextUjianAda = false
+				tingkatData.PelacakUjianHariAktif = false
+			}
+			
+			// PERBAIKAN: Hanya proses sesi jika ujian hari ini
+			if tanggal.Day() == now.Day() && tanggal.Month() == now.Month() && tanggal.Year() == now.Year() {
+				// PERBAIKAN: Logika yang lebih sederhana untuk menentukan sesi mana yang ditampilkan
 				
-				// Cek status sesi
-				if sesi.JamMulai != "" && sesi.JamSelesai != "" {
-					sesiMulai, errMulai := parseTime(sesi.JamMulai)
-					_, errSelesai := parseTime(sesi.JamSelesai)
+				// Urutkan sesi berdasarkan jam mulai
+				sort.Slice(tingkatData.SesiUjian, func(i, j int) bool {
+					jamI, _ := parseTime(tingkatData.SesiUjian[i].JamMulai)
+					jamJ, _ := parseTime(tingkatData.SesiUjian[j].JamMulai)
+					return jamI.Before(jamJ)
+				})
+				
+				var sesiYangDitampilkan *models.SesiData = nil
+				
+				// Cari sesi yang sedang berlangsung atau akan berlangsung
+				for j := range tingkatData.SesiUjian {
+					sesi := &tingkatData.SesiUjian[j]
 					
-					if errMulai != nil || errSelesai != nil {
-						continue
-					}
-					
-					// Set flag adaSesiBerikutnya dan nomor sesi berikutnya
-					if i < len(tingkatData.SesiUjian)-1 {
-						sesi.AdaSesiBerikutnya = true
-						// Set IsNextSesi dengan nomor sesi berikutnya (bukan boolean)
-						sesi.IsNextSesi = tingkatData.SesiUjian[i+1].IsSesi
-					} else {
-						sesi.AdaSesiBerikutnya = false
-						sesi.IsNextSesi = 0 // tidak ada sesi berikutnya
-					}
-					
-					// PERBAIKAN: Hitung sisa waktu sesi dalam menit dengan lebih akurat
-					sisaWaktuSesi := int(math.Ceil(sesiMulai.Sub(now).Minutes()))
-					
-					// Check if this is the current active session
-					if i == sesiAktifIndex {
-						// Sesi ini sedang aktif
+					if sesi.JamMulai != "" && sesi.JamSelesai != "" {
+						sesiMulai, errMulai := parseTime(sesi.JamMulai)
+						sesiSelesai, errSelesai := parseTime(sesi.JamSelesai)
+						
+						if errMulai != nil || errSelesai != nil {
+							continue
+						}
+						
+						// Reset nilai default
+						sesi.IsNextSesi = 0
+						sesi.TampilkanUjian = false
 						sesi.HitungMundurSesiAktif = false
 						sesi.SisaWaktuSesi = 0
-						sesi.TampilkanUjian = true // Tampilkan ujian saat sesi aktif
+						sesi.SisaWaktuResetUjian = 0
 						
-						// Process ujian dalam sesi aktif
-						for j := range sesi.Ujian {
-							ujian := &sesi.Ujian[j]
-							
-							// Parse waktu ujian
-							ujianMulai, err := parseTime(ujian.JamMulai)
-							ujianSelesai, err2 := parseTime(ujian.JamSelesai)
-							
-							if err != nil || err2 != nil {
-								continue
-							}
-							
-							// Cek status ujian berdasarkan waktu sekarang
-							if now.After(ujianSelesai) {
-								// Ujian sudah selesai
-								ujian.Status = "selesai"
-								ujian.HitungMundurAktif = false
-								ujian.SisaWaktuMulai = 0
-							} else if now.After(ujianMulai) {
-								// Ujian sedang aktif
-								ujian.Status = "active"
-								ujian.HitungMundurAktif = false
-								ujian.SisaWaktuMulai = 0
-							} else {
-								// Ujian belum mulai
-								sisaWaktuUjian := int(math.Ceil(ujianMulai.Sub(now).Minutes()))
-								ujian.Status = "pending"
-								// Aktifkan hitung mundur jika kurang dari 30 menit
-								if sisaWaktuUjian <= 30 {
-									ujian.HitungMundurAktif = true
-								} else {
-									ujian.HitungMundurAktif = false
-								}
-								ujian.SisaWaktuMulai = sisaWaktuUjian
-							}
-							
-							// Cek ujian berikutnya
-							if j < len(sesi.Ujian)-1 {
-								ujian.UjianBerikutnyaAda = true
-							} else {
-								ujian.UjianBerikutnyaAda = false
-							}
+						// Set flag sesi berikutnya
+						if j < len(tingkatData.SesiUjian)-1 {
+							sesi.AdaSesiBerikutnya = true
+							sesi.IsNextSesi = tingkatData.SesiUjian[j+1].IsSesi
+						} else {
+							sesi.AdaSesiBerikutnya = false
+							sesi.IsNextSesi = 0
 						}
 						
-						// Cek apakah ada sesi berikutnya dan tambahkan info tentang sesi berikutnya
-						if sesiBerikutnyaIndex != -1 && sesi.AdaSesiBerikutnya {
-							sesiBerikutnyaMulai, _ := parseTime(tingkatData.SesiUjian[sesiBerikutnyaIndex].JamMulai)
-							sisaWaktuKeSesiBerikutnya := int(math.Ceil(sesiBerikutnyaMulai.Sub(now).Minutes()))
+						// Cek status sesi berdasarkan waktu sekarang
+						if now.After(sesiMulai) && now.Before(sesiSelesai) {
+							// SESI SEDANG BERLANGSUNG
+							sesiYangDitampilkan = sesi
+							sesi.TampilkanUjian = true
 							
-							// Jika sesi berikutnya kurang dari 15 menit lagi, siapkan informasi sesi berikutnya
-							if sisaWaktuKeSesiBerikutnya <= 15 {
-								// Persiapkan reset ujian untuk sesi aktif
-								sesi.SisaWaktuResetUjian = sisaWaktuKeSesiBerikutnya
-							}
-						}
-					} else if i == sesiBerikutnyaIndex {
-						// Sesi berikutnya yang akan aktif
-						sesiBerikutnyaMulai, _ := parseTime(sesi.JamMulai)
-						sisaWaktuKeSesiBerikutnya := int(math.Ceil(sesiBerikutnyaMulai.Sub(now).Minutes()))
-						
-						// Tandai sebagai sesi berikutnya
-						sesi.IsNextSesi = sesi.IsSesi
-						
-						// PERUBAHAN PENTING: Cek apakah sesi ini akan dimulai dalam waktu 30 menit
-						if sisaWaktuKeSesiBerikutnya <= 30 {
-							// Aktifkan hitung mundur 30 menit sebelum sesi
-							sesi.HitungMundurSesiAktif = true
-							sesi.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
-							
-							// PERUBAHAN: Tampilkan ujian jika kurang dari 5 menit sebelum sesi mulai
-							if sisaWaktuKeSesiBerikutnya <= 5 {
-								sesi.TampilkanUjian = true
+							// Process ujian dalam sesi aktif
+							for k := range sesi.Ujian {
+								ujian := &sesi.Ujian[k]
+								oldStatus := ujian.Status
 								
-								// Process ujian dalam sesi berikutnya yang akan dimulai dalam 5 menit
-								for j := range sesi.Ujian {
-									ujian := &sesi.Ujian[j]
-									
-									// Parse waktu ujian
-									ujianMulai, err := parseTime(ujian.JamMulai)
-									if err != nil {
-										continue
-									}
-									
-									// Semua ujian dalam status pending
-									ujian.Status = "pending"
-									
-									// Hitung sisa waktu ujian dalam menit
+								ujianMulai, err := parseTime(ujian.JamMulai)
+								ujianSelesai, err2 := parseTime(ujian.JamSelesai)
+								
+								if err != nil || err2 != nil {
+									continue
+								}
+								
+								var newStatus string
+								if now.After(ujianSelesai) {
+									newStatus = "selesai"
+									ujian.HitungMundurAktif = false
+									ujian.SisaWaktuMulai = 0
+								} else if now.After(ujianMulai) {
+									newStatus = "active"
+									ujian.HitungMundurAktif = false
+									ujian.SisaWaktuMulai = 0
+								} else {
 									sisaWaktuUjian := int(math.Ceil(ujianMulai.Sub(now).Minutes()))
-									ujian.SisaWaktuMulai = sisaWaktuUjian
-									
-									// Aktifkan hitung mundur jika kurang dari 30 menit
+									newStatus = "pending"
 									if sisaWaktuUjian <= 30 {
 										ujian.HitungMundurAktif = true
 									} else {
 										ujian.HitungMundurAktif = false
 									}
+									ujian.SisaWaktuMulai = sisaWaktuUjian
+								}
+
+								if oldStatus != newStatus {
+									err := updateUjianStatus(ut.DB, ujian, newStatus)
+									if err != nil {
+										log.Printf("Error updating ujian status: %v", err)
+									}
+								}
+
+								// Cek ujian berikutnya
+								if k < len(sesi.Ujian)-1 {
+									ujian.UjianBerikutnyaAda = true
+								} else {
+									ujian.UjianBerikutnyaAda = false
+								}
+							}
+							break // Keluar dari loop karena sudah menemukan sesi aktif
+							
+						} else if now.Before(sesiMulai) {
+							// SESI BELUM DIMULAI - cek apakah kurang dari 5 menit
+							sisaWaktuKeSesi := int(math.Ceil(sesiMulai.Sub(now).Minutes()))
+							
+							if sisaWaktuKeSesi <= 5 && sesiYangDitampilkan == nil {
+								// Tampilkan sesi yang akan dimulai dalam 5 menit
+								sesiYangDitampilkan = sesi
+								sesi.TampilkanUjian = true
+								
+								// Process ujian dalam sesi berikutnya
+								for k := range sesi.Ujian {
+									ujian := &sesi.Ujian[k]
+									oldStatus := ujian.Status
 									
-									// Cek ujian berikutnya
-									if j < len(sesi.Ujian)-1 {
+									ujianMulai, err := parseTime(ujian.JamMulai)
+									if err != nil {
+										continue
+									}
+									
+									newStatus := "pending"
+									sisaWaktuUjian := int(math.Ceil(ujianMulai.Sub(now).Minutes()))
+									ujian.SisaWaktuMulai = sisaWaktuUjian
+									
+									if sisaWaktuUjian <= 30 {
+										ujian.HitungMundurAktif = true
+									} else {
+										ujian.HitungMundurAktif = false
+									}
+
+									if oldStatus != newStatus {
+										err := updateUjianStatus(ut.DB, ujian, newStatus)
+										if err != nil {
+											log.Printf("Error updating ujian status: %v", err)
+										}
+									}
+									
+									if k < len(sesi.Ujian)-1 {
 										ujian.UjianBerikutnyaAda = true
 									} else {
 										ujian.UjianBerikutnyaAda = false
 									}
 								}
+								
+								// Aktifkan hitung mundur jika kurang dari 30 menit
+								if sisaWaktuKeSesi <= 30 {
+									sesi.HitungMundurSesiAktif = true
+									sesi.SisaWaktuSesi = sisaWaktuKeSesi
+								}
+								break // Keluar dari loop
+							}
+							
+						} else if now.After(sesiSelesai) && sesiYangDitampilkan == nil {
+							// SESI SUDAH SELESAI - cek apakah perlu ditampilkan
+							
+							// Cari sesi berikutnya
+							var sesiBerikutnya *models.SesiData = nil
+							var waktuSesiBerikutnya time.Time
+							
+							for nextIdx := j + 1; nextIdx < len(tingkatData.SesiUjian); nextIdx++ {
+								nextSesi := &tingkatData.SesiUjian[nextIdx]
+								if nextSesi.JamMulai != "" {
+									waktuNext, err := parseTime(nextSesi.JamMulai)
+									if err == nil {
+										sesiBerikutnya = nextSesi
+										waktuSesiBerikutnya = waktuNext
+										break
+									}
+								}
+							}
+							
+							if sesiBerikutnya != nil {
+								// Ada sesi berikutnya
+								sisaWaktuKeSesiBerikutnya := int(math.Ceil(waktuSesiBerikutnya.Sub(now).Minutes()))
+								
+								// Tampilkan sesi terakhir sampai 5 menit sebelum sesi berikutnya
+								if sisaWaktuKeSesiBerikutnya > 5 {
+									sesiYangDitampilkan = sesi
+									sesi.TampilkanUjian = true
+									sesi.SisaWaktuResetUjian = sisaWaktuKeSesiBerikutnya - 5
+									
+									// Set hitung mundur untuk sesi berikutnya
+									if sisaWaktuKeSesiBerikutnya <= 30 {
+										sesi.HitungMundurSesiAktif = true
+										sesi.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
+										sesi.IsNextSesi = sesiBerikutnya.IsSesi
+									}
+									
+									// Set semua ujian sebagai selesai
+									for k := range sesi.Ujian {
+										ujian := &sesi.Ujian[k]
+										oldStatus := ujian.Status
+										newStatus := "selesai"
+										ujian.HitungMundurAktif = false
+										ujian.SisaWaktuMulai = 0
+										
+										if oldStatus != newStatus {
+											err := updateUjianStatus(ut.DB, ujian, newStatus)
+											if err != nil {
+												log.Printf("Error updating ujian status: %v", err)
+											}
+										}
+									}
+								}
 							} else {
-								// Jika lebih dari 5 menit sebelum sesi mulai, jangan tampilkan data ujian
-								sesi.TampilkanUjian = false
+								// Tidak ada sesi berikutnya (sesi terakhir)
+								menitSetelahSelesai := int(now.Sub(sesiSelesai).Minutes())
+								
+								// Tampilkan selama 2 jam setelah selesai
+								if menitSetelahSelesai <= 120 {
+									sesiYangDitampilkan = sesi
+									sesi.TampilkanUjian = true
+									sesi.SisaWaktuResetUjian = 120 - menitSetelahSelesai
+									
+									// Set semua ujian sebagai selesai
+									for k := range sesi.Ujian {
+										ujian := &sesi.Ujian[k]
+										oldStatus := ujian.Status
+										newStatus := "selesai"
+										ujian.HitungMundurAktif = false
+										ujian.SisaWaktuMulai = 0
+										
+										if oldStatus != newStatus {
+											err := updateUjianStatus(ut.DB, ujian, newStatus)
+											if err != nil {
+												log.Printf("Error updating ujian status: %v", err)
+											}
+										}
+									}
+								}
 							}
-						} else {
-							// Sesi berikutnya masih lama
-							sesi.HitungMundurSesiAktif = false
-							sesi.SisaWaktuSesi = sisaWaktuSesi
-							sesi.TampilkanUjian = false
-						}
-					} else if sesiTerakhirSelesaiIndex != -1 && i == sesiTerakhirSelesaiIndex && sesiBerikutnyaIndex != -1 {
-						// PERUBAHAN PENTING: Sesi terakhir yang sudah selesai dan ada sesi berikutnya
-						sesiBerikutnyaMulai, _ := parseTime(tingkatData.SesiUjian[sesiBerikutnyaIndex].JamMulai)
-						sisaWaktuKeSesiBerikutnya := int(math.Ceil(sesiBerikutnyaMulai.Sub(now).Minutes()))
-						
-						// PERUBAHAN: Tetap tampilkan data sesi terakhir sampai 5 menit sebelum sesi berikutnya
-						if sisaWaktuKeSesiBerikutnya > 5 {
-							sesi.TampilkanUjian = true
-							
-							// Jika sesi berikutnya akan dimulai dalam 30 menit, mulai hitung mundur
-							if sisaWaktuKeSesiBerikutnya <= 30 {
-								sesi.HitungMundurSesiAktif = true
-								sesi.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
-								sesi.IsNextSesi = tingkatData.SesiUjian[sesiBerikutnyaIndex].IsSesi
-							} else {
-								sesi.HitungMundurSesiAktif = false
-								sesi.SisaWaktuSesi = 0
-							}
-							
-							// Set waktu reset 5 menit sebelum sesi berikutnya
-							sesi.SisaWaktuResetUjian = sisaWaktuKeSesiBerikutnya - 5
-							
-							// Process ujian - semua dalam status selesai
-							for j := range sesi.Ujian {
-								ujian := &sesi.Ujian[j]
-								ujian.Status = "selesai"
-								ujian.HitungMundurAktif = false
-								ujian.SisaWaktuMulai = 0
-							}
-						} else {
-							// Sudah kurang dari 5 menit ke sesi berikutnya, transisi ke sesi berikutnya
-							// Tetapi masih tampilkan data sesi terakhir dengan tambahan flag untuk sesi berikutnya
-							sesi.TampilkanUjian = false
-							sesi.HitungMundurSesiAktif = true
-							sesi.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
-							sesi.IsNextSesi = tingkatData.SesiUjian[sesiBerikutnyaIndex].IsSesi
-						}
-					} else if sesiTerakhirSelesaiIndex != -1 && i == sesiTerakhirSelesaiIndex {
-						// Sesi terakhir yang sudah selesai dan tidak ada sesi berikutnya
-						sesiSelesai, _ := parseTime(sesi.JamSelesai)
-						menitSetelahSesiSelesai := int(now.Sub(sesiSelesai).Minutes())
-						
-						// Tampilkan selama 2 jam setelah selesai
-						if menitSetelahSesiSelesai <= 120 {
-							sesi.TampilkanUjian = true
-							sesi.SisaWaktuResetUjian = 120 - menitSetelahSesiSelesai
-							sesi.HitungMundurSesiAktif = false
-							sesi.SisaWaktuSesi = 0
-							
-							// Process ujian - semua dalam status selesai
-							for j := range sesi.Ujian {
-								ujian := &sesi.Ujian[j]
-								ujian.Status = "selesai"
-								ujian.HitungMundurAktif = false
-								ujian.SisaWaktuMulai = 0
-							}
-						} else {
-							sesi.TampilkanUjian = false
-						}
-					} else {
-						// Sesi lain yang tidak aktif, tidak berikutnya, dan tidak terakhir
-						sesi.HitungMundurSesiAktif = false
-						sesi.TampilkanUjian = false
-						
-						if sisaWaktuSesi > 0 {
-							sesi.SisaWaktuSesi = sisaWaktuSesi
-						} else {
-							sesi.SisaWaktuSesi = 0
 						}
 					}
 				}
+				
+				// PERBAIKAN: Hanya tampilkan satu sesi yang relevan
+				var sesiUntukDitampilkan []models.SesiData
+				if sesiYangDitampilkan != nil {
+					sesiUntukDitampilkan = append(sesiUntukDitampilkan, *sesiYangDitampilkan)
+				}
+				tingkatData.SesiUjian = sesiUntukDitampilkan
+				
+			} else {
+				// PERBAIKAN: Jika bukan hari ini, kosongkan sesi ujian
+				tingkatData.SesiUjian = []models.SesiData{}
 			}
 			
-// Bagian perbaikan untuk menentukan sesi yang ditampilkan
-var sesiUntukDitampilkan []models.SesiData
-
-// Jika ada sesi aktif, selalu tampilkan
-if sesiAktifIndex != -1 {
-    sesiAktif := tingkatData.SesiUjian[sesiAktifIndex]
-    sesiUntukDitampilkan = append(sesiUntukDitampilkan, sesiAktif)
-} else if sesiBerikutnyaIndex != -1 {
-    // Tidak ada sesi aktif, tapi ada sesi berikutnya
-    sesiBerikutnya := tingkatData.SesiUjian[sesiBerikutnyaIndex]
-    sesiBerikutnyaMulai, _ := parseTime(sesiBerikutnya.JamMulai)
-    sisaWaktuKeSesiBerikutnya := int(math.Ceil(sesiBerikutnyaMulai.Sub(now).Minutes()))
-    
-    // PERBAIKAN: Jika masih ada lebih dari 5 menit ke sesi berikutnya
-    // dan ada sesi terakhir, tampilkan sesi terakhir dengan flag untuk sesi berikutnya
-    if sisaWaktuKeSesiBerikutnya > 5 && sesiTerakhirSelesaiIndex != -1 {
-        sesiTerakhir := tingkatData.SesiUjian[sesiTerakhirSelesaiIndex]
-        
-        // Tambahkan info sesi berikutnya ke sesi terakhir
-        if sisaWaktuKeSesiBerikutnya <= 30 {
-            sesiTerakhir.HitungMundurSesiAktif = true
-            sesiTerakhir.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
-            sesiTerakhir.IsNextSesi = sesiBerikutnya.IsSesi
-        }
-        
-        sesiTerakhir.TampilkanUjian = true
-        sesiUntukDitampilkan = append(sesiUntukDitampilkan, sesiTerakhir)
-    } else if sisaWaktuKeSesiBerikutnya <= 5 {
-        // PERBAIKAN: Tampilkan sesi berikutnya jika kurang dari atau sama dengan 5 menit
-        sesiBerikutnya.TampilkanUjian = true
-        
-        // Tambahkan hitung mundur 30 menit sebelum sesi
-        if sisaWaktuKeSesiBerikutnya <= 30 {
-            sesiBerikutnya.HitungMundurSesiAktif = true
-            sesiBerikutnya.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
-        }
-        
-        sesiUntukDitampilkan = append(sesiUntukDitampilkan, sesiBerikutnya)
-    } else {
-        // PERBAIKAN: Jika lebih dari 5 menit, jangan tampilkan sesi berikutnya
-        // Kecuali ada sesi terakhir yang perlu ditampilkan
-        if sesiTerakhirSelesaiIndex != -1 {
-            sesiTerakhir := tingkatData.SesiUjian[sesiTerakhirSelesaiIndex]
-            sesiSelesai, _ := parseTime(sesiTerakhir.JamSelesai)
-            menitSetelahSesiSelesai := int(now.Sub(sesiSelesai).Minutes())
-            
-            // Tampilkan selama masih dalam batas waktu
-            if menitSetelahSesiSelesai <= 120 {
-                sesiTerakhir.TampilkanUjian = true
-                sesiTerakhir.SisaWaktuResetUjian = 120 - menitSetelahSesiSelesai
-                
-                // Tambahkan info sesi berikutnya jika dalam 30 menit
-                if sisaWaktuKeSesiBerikutnya <= 30 {
-                    sesiTerakhir.HitungMundurSesiAktif = true
-                    sesiTerakhir.SisaWaktuSesi = sisaWaktuKeSesiBerikutnya
-                    sesiTerakhir.IsNextSesi = sesiBerikutnya.IsSesi
-                }
-                
-                sesiUntukDitampilkan = append(sesiUntukDitampilkan, sesiTerakhir)
-            }
-        }
-        // Jika tidak ada sesi terakhir atau sudah lewat batas, tidak ada sesi yang ditampilkan
-    }
-} else if sesiTerakhirSelesaiIndex != -1 {
-    // Tidak ada sesi aktif atau berikutnya, cek sesi terakhir yang sudah selesai
-    sesiTerakhir := tingkatData.SesiUjian[sesiTerakhirSelesaiIndex]
-    sesiSelesai, _ := parseTime(sesiTerakhir.JamSelesai)
-    menitSetelahSesiSelesai := int(now.Sub(sesiSelesai).Minutes())
-    
-    // Tampilkan selama 2 jam setelah selesai
-    if menitSetelahSesiSelesai <= 120 {
-        sesiTerakhir.TampilkanUjian = true
-        sesiTerakhir.SisaWaktuResetUjian = 120 - menitSetelahSesiSelesai
-        sesiUntukDitampilkan = append(sesiUntukDitampilkan, sesiTerakhir)
-    }
-}
-
-// Update tingkatData dengan sesi yang akan ditampilkan
-tingkatData.SesiUjian = sesiUntukDitampilkan
-		}
-		
-		// Tambahkan data ke result sesuai tingkat
-		switch tingkat {
-		case models.TingkatX:
-			if len(tingkatData.SesiUjian) > 0 {
-				result.X = append(result.X, tingkatData)
+			// PERBAIKAN: Hanya tambahkan ke result jika ada data yang relevan
+			shouldAddToResult := false
+			
+			// Tambahkan jika ujian hari ini dan ada sesi yang ditampilkan
+			if sisaHari == 0 && len(tingkatData.SesiUjian) > 0 {
+				shouldAddToResult = true
 			}
-		case models.TingkatXI:
-			if len(tingkatData.SesiUjian) > 0 {
-				result.XI = append(result.XI, tingkatData)
+			
+			// Tambahkan jika pelacak ujian aktif (ujian dalam 3 hari ke depan)
+			if tingkatData.PelacakUjianHariAktif {
+				shouldAddToResult = true
 			}
-		case models.TingkatXII:
-			if len(tingkatData.SesiUjian) > 0 {
-				result.XII = append(result.XII, tingkatData)
+			
+			if shouldAddToResult {
+				// Tambahkan data ke result sesuai tingkat
+				switch tingkat {
+				case models.TingkatX:
+					result.X = append(result.X, *tingkatData)
+				case models.TingkatXI:
+					result.XI = append(result.XI, *tingkatData)
+				case models.TingkatXII:
+					result.XII = append(result.XII, *tingkatData)
+				}
 			}
 		}
 	}
-}
 	
 	// Broadcast data terbaru ke clients
 	ut.Broadcast <- result
 }
+
 
 // StartTracking memulai proses tracking ujian
 func (ut *UjianTracker) StartTracking() {
