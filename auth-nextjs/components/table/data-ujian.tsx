@@ -22,34 +22,15 @@ import {
   Box,
   Typography,
   Alert,
-  Chip,
   Divider,
 } from "@mui/material";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import { mutate } from "swr";
-import { deleteUjian, updateUjian } from "@/lib/crudUjian";
-import {
-  showErrorToast,
-  showSuccessToast,
-} from "@/components/toast/ToastSuccess";
-import { Trash2Icon, CalendarIcon } from "lucide-react";
-import { FormButton } from "../button";
-import Swal from "sweetalert2";
+
 import dayjs from "dayjs";
 import "dayjs/locale/id";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import TableLoading from "../skeleton/Table-loading";
-import { number } from "zod";
 
 interface UjianData {
   id: string;
@@ -58,6 +39,7 @@ interface UjianData {
   jamSelesai: string;
   status: string;
   token: string;
+  isUjianSusulan: boolean;
   ujianBerikutnyaAda: boolean;
   hitungMundurAktif: boolean;
   sisaWaktuMulai: number | null;
@@ -325,7 +307,12 @@ function Row({
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
-        <TableCell className="truncate">{row.mataPelajaran}</TableCell>
+        <TableCell className="">
+          {row.mataPelajaran}{" "}
+          {row.isUjianSusulan && (
+            <span className="text-yellow-500 font-light">ujian susulan</span>
+          )}
+        </TableCell>
         <TableCell align="center">{token || "-"}</TableCell>
         <TableCell align="center">
           <div

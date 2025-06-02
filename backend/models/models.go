@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type MataPelajaran struct {
 	ID        string `json:"id"`
 	Tingkat   string `json:"tingkat"`
@@ -140,8 +142,6 @@ type ResponseDataUjian struct {
 	XI  []TingkatData `json:"XI"`
 	XII []TingkatData `json:"XII"`
 }
-
-// TingkatData berisi informasi jadwal per tingkat
 type TingkatData struct {
 	Tanggal               string     `json:"tanggal"`
 	SisaHari              int        `json:"sisaHari"`
@@ -150,33 +150,44 @@ type TingkatData struct {
 	SesiUjian             []SesiData `json:"sesiUjian"`
 }
 
-// SesiData berisi informasi per sesi ujian
 type SesiData struct {
-	ID                    string      `json:"id"`
-	IsSesi                int         `json:"isSesi"`
-	JamMulai              string      `json:"jamMulai"`
-	JamSelesai            string      `json:"jamSelesai"`
-	HitungMundurSesiAktif bool        `json:"hitungMundurSesiAktif"`
-	SisaWaktuSesi         int         `json:"sisaWaktuSesi"`       // dalam menit
-	SisaWaktuResetUjian   int         `json:"sisaWaktuResetUjian"` // dalam menit
-	AdaSesiBerikutnya     bool        `json:"adaSesiBerikutnya"`
-	IsNextSesi            int         `json:"isNextSesi"`     // nomor sesi berikutnya (bukan boolean)
-	TampilkanUjian        bool        `json:"tampilkanUjian"` // indikator untuk menampilkan data ujian
-	Ujian                 []UjianData `json:"ujian"`
+    ID                    string      `json:"id"`
+    IsSesi               int         `json:"isSesi"`
+    JamMulai             string      `json:"jamMulai"`
+    JamSelesai           string      `json:"jamSelesai"`
+    HitungMundurSesiAktif bool       `json:"hitungMundurSesiAktif"`
+    SisaWaktuSesi        int         `json:"sisaWaktuSesi"`
+    SisaWaktuResetUjian  int         `json:"sisaWaktuResetUjian"`
+    AdaSesiBerikutnya    bool        `json:"adaSesiBerikutnya"`
+    IsNextSesi           int         `json:"isNextSesi"`
+    TampilkanUjian       bool        `json:"tampilkanUjian"`
+    HasUjianSusulan      bool        `json:"hasUjianSusulan"` // Field baru
+    Ujian                []UjianData `json:"ujian"`
 }
 
-// UjianData berisi informasi per ujian
 type UjianData struct {
-	ID                 string `json:"id"`
-	MataPelajaran      string `json:"mataPelajaran"`
-	JamMulai           string `json:"jamMulai"`
-	JamSelesai         string `json:"jamSelesai"`
-	Status             string `json:"status"`
-	Token              string `json:"token"`
-	UjianBerikutnyaAda bool   `json:"ujianBerikutnyaAda"`
-	HitungMundurAktif  bool   `json:"hitungMundurAktif"`
-	SisaWaktuMulai     int    `json:"sisaWaktuMulai"` // dalam menit
-	WaktuPengerjaan    int    `json:"waktuPengerjaan"`
+	ID                 string     `json:"id"`
+	MataPelajaran      string     `json:"mataPelajaran"`
+	JamMulai           string     `json:"jamMulai"`
+	JamSelesai         string     `json:"jamSelesai"`
+	Status             string     `json:"status"`
+	Token              string     `json:"token"`
+	UjianBerikutnyaAda bool       `json:"ujianBerikutnyaAda"`
+	HitungMundurAktif  bool       `json:"hitungMundurAktif"`
+	SisaWaktuMulai     int        `json:"sisaWaktuMulai"`
+	WaktuPengerjaan    int        `json:"waktuPengerjaan"`
+	 IsUjianSusulan     bool      `json:"isUjianSusulan"`
+	 WaktuDibuat        time.Time `json:"waktuDibuat,omitempty"`
+	 WaktuBerakhir      time.Time `json:"waktuBerakhir,omitempty"`
+	 TiedToSesiID         string    `json:"tiedToSesiID,omitempty"`
+}
+type UjianSusulanData struct {
+	Tingkat       Tingkat   `json:"tingkat"`
+    UjianData     UjianData `json:"ujianData"`
+    SesiData      SesiData  `json:"sesiData"`
+    WaktuDibuat   time.Time `json:"waktuDibuat"`
+    WaktuBerakhir time.Time `json:"waktuBerakhir"`
+    SesiId        string    `json:"sesiId"` 
 }
 
 // Untuk konversi dari model database ke respons API
@@ -207,3 +218,4 @@ type ResponseUjianTerlewat struct {
 	XI  []UjianTerlewat `json:"XI"`
 	XII []UjianTerlewat `json:"XII"`
 }
+

@@ -2,34 +2,37 @@
   "X": [],
   "XI": [
     {
-      "tanggal": "2025-05-26",
+      "tanggal": "2025-05-31",
       "sisaHari": 1,
       "nextUjianAda": true,
       "pelacakUjianHariAktif": true,
       "sesiUjian": [
         {
-          "id": "cmb3wft8o000k7ktgtgj83bi5",
-          "isSesi": 2,
-          "jamMulai": "00:15",
-          "jamSelesai": "00:20",
+          "id": "cmbb4mhah00017kd8jp88hiu3",
+          "isSesi": 1,
+          "jamMulai": "01:00",
+          "jamSelesai": "01:50",
           "hitungMundurSesiAktif": true,
-          "sisaWaktuSesi": 5,
-          "sisaWaktuResetUjian": 0,
-          "adaSesiBerikutnya": false,
-          "isNextSesi": 0,
+          "sisaWaktuSesi": 6,
+          "sisaWaktuResetUjian": 1,
+          "adaSesiBerikutnya": true,
+          "isNextSesi": 2,
           "tampilkanUjian": true,
           "ujian": [
             {
-              "id": "cmb3wh60w000m7ktg1te6h96j",
+              "id": "cmbb4o31d00037kd8pwmol5fw",
               "mataPelajaran": "BIndo",
-              "jamMulai": "00:15",
-              "jamSelesai": "00:20",
-              "status": "pending",
-              "token": "",
-              "ujianBerikutnyaAda": false,
-              "hitungMundurAktif": true,
-              "sisaWaktuMulai": 5,
-              "waktuPengerjaan": 5
+              "jamMulai": "01:00",
+              "jamSelesai": "01:50",
+              "status": "active",
+              "token": "NGVPT",
+              "ujianBerikutnyaAda": true,
+              "hitungMundurAktif": false,
+              "sisaWaktuMulai": 0,
+              "waktuPengerjaan": 50,
+              "isUjianSusulan": false,
+              "waktuDibuat": "0001-01-01T00:00:00Z",
+              "waktuBerakhir": "0001-01-01T00:00:00Z"
             }
           ]
         }
@@ -38,3 +41,62 @@
   ],
   "XII": []
 }
+{
+  "X": [],
+  "XI": [
+      {
+          "tanggal": "2025-05-31",
+          "sisaHari": 1,
+          "nextUjianAda": true,
+          "pelacakUjianHariAktif": true,
+          "sesiUjian": [
+              {
+                  "id": "cmbb4mhah00027kd8bmht3hp7",
+                  "isSesi": 2,
+                  "jamMulai": "01:57",
+                  "jamSelesai": "02:02",
+                  "hitungMundurSesiAktif": true,
+                  "sisaWaktuSesi": 5,
+                  "sisaWaktuResetUjian": 0,
+                  "adaSesiBerikutnya": false,
+                  "isNextSesi": 0,
+                  "tampilkanUjian": true,
+                  "ujian": [
+                      {
+                          "id": "cmbb4o31d00047kd8ydfjg5bz",
+                          "mataPelajaran": "BIndo",
+                          "jamMulai": "01:57",
+                          "jamSelesai": "02:02",
+                          "status": "pending",
+                          "token": "JEDYD",
+                          "ujianBerikutnyaAda": true,
+                          "hitungMundurAktif": true,
+                          "sisaWaktuMulai": 5,
+                          "waktuPengerjaan": 5,
+                          "isUjianSusulan": false,
+                          "waktuDibuat": "0001-01-01T00:00:00Z",
+                          "waktuBerakhir": "0001-01-01T00:00:00Z"
+                      },
+                      {
+                          "id": "cmbabddgp000h7k0g0dw1hain",
+                          "mataPelajaran": "Sejarah",
+                          "jamMulai": "01:57",
+                          "jamSelesai": "02:02",
+                          "status": "pending",
+                          "token": "YAPNR",
+                          "ujianBerikutnyaAda": false,
+                          "hitungMundurAktif": true,
+                          "sisaWaktuMulai": 5,
+                          "waktuPengerjaan": 60,
+                          "isUjianSusulan": true,
+                          "waktuDibuat": "2025-05-31T01:49:19.7795691+07:00",
+                          "waktuBerakhir": "2025-05-31T02:49:19.7795691+07:00"
+                      }
+                  ]
+              }
+          ]
+      }
+  ],
+  "XII": []
+}
+

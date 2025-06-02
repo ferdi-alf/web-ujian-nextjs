@@ -8,6 +8,7 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Button,
 } from "@mui/material";
 
 export interface UjianTerlewatDetail {
@@ -39,6 +40,11 @@ export interface AutocompleteOption {
   pelajaran: string;
 }
 
+interface FormInputUjianProps {
+  onUjianSelected?: (selectedUjian: AutocompleteOption[]) => void;
+  onSubmitUjianSusulan?: (selectedUjian: AutocompleteOption[]) => Promise<void>;
+}
+
 const GroupHeader = styled("div")(({ theme }) => ({
   position: "sticky",
   top: "-8px",
@@ -53,18 +59,17 @@ const GroupItems = styled("ul")({
   padding: 0,
 });
 
-interface FormInputUjianProps {
-  onUjianSelected?: (selectedUjian: AutocompleteOption[]) => void;
-}
-
-const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
+const FormInputUjian: React.FC<FormInputUjianProps> = ({
+  onUjianSelected,
+  onSubmitUjianSusulan,
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [selectedUjian, setSelectedUjian] = useState<AutocompleteOption[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   console.log("Selected Ujian:", selectedUjian);
 
-  // Transform data dari API ke format yang dibutuhkan Autocomplete
   const transformDataToOptions = useCallback(
     (data: ResponseUjianTerlewat): AutocompleteOption[] => {
       const options: AutocompleteOption[] = [];
@@ -105,7 +110,6 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
     []
   );
 
-  // Fetch data ujian terlewat
   const fetchUjianTerlewat = useCallback(async () => {
     try {
       setLoading(true);
@@ -155,6 +159,32 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
     }
   };
 
+  const handleSubmitUjianSusulan = async () => {
+    if (selectedUjian.length === 0) {
+      setError("Pilih minimal satu ujian terlewat");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      if (onSubmitUjianSusulan) {
+        await onSubmitUjianSusulan(selectedUjian);
+        setSelectedUjian([]);
+      }
+    } catch (err) {
+      console.error("Error submitting ujian susulan:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan saat menambahkan ujian susulan "
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Custom render option untuk menampilkan informasi lebih detail
   const renderOption = (props: any, option: AutocompleteOption) => {
     return (
@@ -182,7 +212,6 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
     );
   };
 
-  // Custom render tags untuk selected items
   const renderTags = (tagValue: AutocompleteOption[], getTagProps: any) =>
     tagValue.map((option, index) => (
       <Chip
@@ -250,7 +279,6 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
           },
         }}
         filterOptions={(options, { inputValue }) => {
-          // Custom filter untuk pencarian yang lebih fleksibel
           const filterValue = inputValue.toLowerCase();
           return options.filter(
             (option) =>
@@ -275,7 +303,7 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
           <Typography variant="subtitle2" gutterBottom>
             Ujian terpilih: {selectedUjian.length} item
           </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
             {selectedUjian.map((ujian) => (
               <Chip
                 key={ujian.ujianId}
@@ -286,6 +314,17 @@ const FormInputUjian: React.FC<FormInputUjianProps> = ({ onUjianSelected }) => {
               />
             ))}
           </Box>
+
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubmitUjianSusulan}
+            disabled={submitting}
+            startIcon={submitting ? <CircularProgress size={20} /> : null}
+            fullWidth
+          >
+            {submitting ? "Menambahkan..." : "Tambahkan Ujian Susulan"}
+          </Button>
         </Box>
       )}
     </Box>

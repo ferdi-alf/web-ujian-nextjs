@@ -52,6 +52,7 @@ func InitDB() *sql.DB {
     return db
 }
 
+
 func MigrateJawabanSiswa(db *gorm.DB) error {
 	// Buat tabel untuk menyimpan jawaban siswa
 	err := db.AutoMigrate(

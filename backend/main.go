@@ -3,6 +3,7 @@ package main
 import (
 	"backend/config"
 	"backend/handlers"
+	"backend/models"
 	"fmt"
 	"log"
 
@@ -19,6 +20,7 @@ func main() {
 
     // Initialize database
     db := config.InitDB()
+    
     defer db.Close()
 
     // Initialize Fiber
@@ -51,16 +53,22 @@ func main() {
    
     app.Post("/api/ujian/submit", ujianHandler.SubmitUjian)
     app.Get("/api/data-ujian-terlewat", handlers.GetUjianTerlewat(db))
-    // app.Post("/api/data-ujian-terlewat")
-
+ 
+      
     app.Get("/api/hasil/:id", ujianHandler.GetHasilDetail)
     app.Get("/api/ujian/download", func(c *fiber.Ctx) error {
     return handlers.DownloadHasilUjian(c, db)
     })
     handlers.SetupWebSocket(app, db)
+
+   // Setup websocket dan tracker PERTAMA
+    ujianBroadcast := make(chan models.ResponseDataUjian, 10)
+    ujianTracker := handlers.SetupWebSocketUjian(app, db, ujianBroadcast)
+    
+    // Setup routes dengan tracker yang SAMA
     app.Get("/api/data-ujian", handlers.GetUjianTrackingData(db))
-	// Setup WebSocket
-	handlers.SetupWebSocketUjian(app, db)
+    app.Post("/api/data-ujian-terlewat", handlers.AddUjianSusulan(db, ujianTracker))
+
 
 
 
