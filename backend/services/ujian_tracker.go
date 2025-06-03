@@ -331,7 +331,6 @@ func (ut *UjianTracker) UpdateTrackingData() {
     ut.Broadcast <- result
 }
 
-// Modifikasi integratedUjianSusulan untuk lebih fleksibel
 func (ut *UjianTracker) integratedUjianSusulan(tingkatData *models.TingkatData, tingkat models.Tingkat, today string) {
     ut.mutex.RLock()
     ujianList, exists := ut.UjianSusulan[tingkat]
@@ -416,7 +415,6 @@ func (ut *UjianTracker) integratedUjianSusulan(tingkatData *models.TingkatData, 
     }
 }
 
-// Tambahkan fungsi untuk mengecek apakah ujian susulan bisa ditambahkan ke sesi tertentu
 func (ut *UjianTracker) canAddUjianSusulanToSesi(sesiID string, tingkatData *models.TingkatData, now time.Time) bool {
     for _, sesi := range tingkatData.SesiUjian {
         if sesi.ID == sesiID {
