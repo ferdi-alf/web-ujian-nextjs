@@ -124,6 +124,7 @@ func processUjianSusulanInTx(tx *sql.Tx, ujianTracker *services.UjianTracker, it
         return fmt.Errorf("gagal memperbarui status ujian: %w", err)
     }
     ujianDetail, err := getUjianDetailInTx(tx, item.UjianId)
+    
     if err != nil {
         return fmt.Errorf("gagal mendapatkan detail ujian: %w", err)
     }
@@ -132,7 +133,7 @@ func processUjianSusulanInTx(tx *sql.Tx, ujianTracker *services.UjianTracker, it
         sesiId = ""
         log.Printf("DEBUG: Using empty sesi ID for grouping")
     }
-    err = ujianTracker.AddUjianSusulan(tingkat, ujianDetail, sesiId)
+    err = ujianTracker.AddUjianSusulan(tingkat, *ujianDetail, ujianDetail.WaktuPengerjaan, sesiId)
     if err != nil {
         return fmt.Errorf("gagal menambahkan ujian susulan: %w", err)
     }
