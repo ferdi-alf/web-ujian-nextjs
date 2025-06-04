@@ -195,7 +195,7 @@ func GetUjianTerlewat(db *sql.DB) (models.ResponseUjianTerlewat, error) {
 
     now := time.Now().In(time.Local)
     
-    startDate := now.AddDate(0, 0, -7).Format("2006-01-02")
+    startDate := now.AddDate(0, 0, -30).Format("2006-01-02")
     endDate := now.Format("2006-01-02")
 
     query := `

@@ -30,12 +30,11 @@ const ModalInputUjian = () => {
       throw new Error("NEXT_PUBLIC_API_URL_GOLANG not defined");
     }
 
-    // Prepare payload for backend
     const payload = {
       ujianIds: selectedUjian.map((ujian) => ({
         ujianId: ujian.ujianId,
         sesiId: ujian.sesiId,
-        tingkat: ujian.tingkat.replace("Kelas ", ""), // Remove 'Kelas ' prefix
+        tingkat: ujian.tingkat.replace("Kelas ", ""),
         pelajaran: ujian.pelajaran,
         sesi: ujian.sesi,
       })),
@@ -84,8 +83,6 @@ const ModalInputUjian = () => {
         icon: "error",
         confirmButtonText: "OK",
       });
-
-      throw error; // Re-throw for FormInputUjian to handle
     }
   };
 

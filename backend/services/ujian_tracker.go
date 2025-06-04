@@ -1,4 +1,3 @@
-// services/ujian_tracker.go
 package services
 
 import (
@@ -108,7 +107,6 @@ func (ut *UjianTracker) UpdateTrackingData() {
         
                 
                 if tanggal.Day() == now.Day() && tanggal.Month() == now.Month() && tanggal.Year() == now.Year() {
-                    // PENTING: Lakukan cleaning SEBELUM processing sesi dan integrasi ujian susulan
                     ut.checkAndCleanExpiredSessionsBeforeIntegration(tingkatData, tingkat, now)
 
                     sort.Slice(tingkatData.SesiUjian, func(i, j int) bool {
@@ -342,7 +340,6 @@ func (ut *UjianTracker) integratedUjianSusulan(tingkatData *models.TingkatData, 
     
     now := time.Now().In(time.Local)
     
-    // Filter ujian yang masih aktif dan dibuat hari ini
     var validUjian []models.UjianSusulanData
     for _, ujian := range ujianList {
         if ujian.WaktuDibuat.Format("2006-01-02") == today && 
@@ -355,21 +352,17 @@ func (ut *UjianTracker) integratedUjianSusulan(tingkatData *models.TingkatData, 
         return
     }
     
-    // Group ujian by sesiID
     ujianBySesi := make(map[string][]models.UjianSusulanData)
     for _, ujian := range validUjian {
         ujianBySesi[ujian.SesiId] = append(ujianBySesi[ujian.SesiId], ujian)
     }
     
-    // Integrate ke sesi yang sesuai atau buat sesi virtual
     for sesiID, ujianGroup := range ujianBySesi {
         integrated := false
         
-        // Coba integrate ke sesi yang ada
         for i := range tingkatData.SesiUjian {
             sesi := &tingkatData.SesiUjian[i]
             if sesi.ID == sesiID && sesi.TampilkanUjian {
-                // Tambahkan ujian susulan ke sesi yang sudah ada
                 for _, ujianSusulan := range ujianGroup {
                     ujianSusulan.UjianData.Status = "active"
                     ujianSusulan.UjianData.HitungMundurAktif = true
@@ -384,7 +377,6 @@ func (ut *UjianTracker) integratedUjianSusulan(tingkatData *models.TingkatData, 
             }
         }
         
-        // Jika tidak bisa integrate ke sesi yang ada, buat sesi virtual
         if !integrated {
             virtualSesi := models.SesiData{
                 ID:                    fmt.Sprintf("virtual-%s-%d", sesiID, now.Unix()),
@@ -536,71 +528,7 @@ func (ut *UjianTracker) shouldDisplaySesiUjianSusulan(sesi *models.SesiData, now
     return shouldDisplay
 }
 
-func (ut *UjianTracker) addUjianSusulanToTargetSesi(tingkatData *models.TingkatData, sesiIndex int, ujianHariIni []models.UjianSusulanData, now time.Time) {
-    if sesiIndex < 0 || sesiIndex >= len(tingkatData.SesiUjian) {
-        log.Printf("ERROR: Invalid sesi index: %d", sesiIndex)
-        return
-    }
-    targetSesi := &tingkatData.SesiUjian[sesiIndex]
-    log.Printf("DEBUG: Adding %d ujian susulan to target sesi %s", len(ujianHariIni), targetSesi.ID)
-    addedCount := 0
-    for _, ujianSusulan := range ujianHariIni {
-        ujianData := ujianSusulan.UjianData
-        if ut.isUjianSusulanExpired(&ujianData, now) {
-            log.Printf("DEBUG: Ujian susulan %s sudah expired, skip adding", ujianData.ID)
-            continue
-        }
-        isDuplicate := false
-        existingIndex := -1
-        for i, existingUjian := range targetSesi.Ujian {
-            if existingUjian.ID == ujianData.ID {
-                isDuplicate = true
-                existingIndex = i
-                log.Printf("DEBUG: Ujian %s already exists in sesi, updating status only", ujianData.ID)
-                break
-            }
-        }
-        
-        if isDuplicate {
-            existingUjian := &tingkatData.SesiUjian[sesiIndex].Ujian[existingIndex]
-            originalToken := existingUjian.Token
-            ut.updateUjianSusulanStatusForSesi(existingUjian, targetSesi, now)
-            existingUjian.Token = originalToken
-            log.Printf("DEBUG: Updated existing ujian susulan %s, token preserved: %s", existingUjian.ID, originalToken)
-            
-        } else {
-            ut.updateUjianSusulanStatusForSesi(&ujianData, targetSesi, now)
-            
-            tingkatData.SesiUjian[sesiIndex].Ujian = append(tingkatData.SesiUjian[sesiIndex].Ujian, ujianData)
-            addedCount++
-            log.Printf("DEBUG: Successfully added new ujian susulan %s to sesi with token: %s", ujianData.ID, ujianData.Token)
-        }
-    }
-    var validUjian []models.UjianData
-    for _, ujian := range tingkatData.SesiUjian[sesiIndex].Ujian {
-        if ujian.IsUjianSusulan {
-            if !ut.isUjianSusulanExpired(&ujian, now) {
-                validUjian = append(validUjian, ujian)
-            } else {
-                log.Printf("DEBUG: Removing expired ujian susulan %s from sesi", ujian.ID)
-            }
-        } else {
-            validUjian = append(validUjian, ujian)
-        }
-    }
-    
-    tingkatData.SesiUjian[sesiIndex].Ujian = validUjian
-
-    for i := range tingkatData.SesiUjian[sesiIndex].Ujian {
-        ujian := &tingkatData.SesiUjian[sesiIndex].Ujian[i]
-        ujian.UjianBerikutnyaAda = (i < len(tingkatData.SesiUjian[sesiIndex].Ujian)-1)
-    }
-    
-    log.Printf("DEBUG: Final sesi %s now has %d ujian (added %d new ujian susulan)", 
-        targetSesi.ID, len(tingkatData.SesiUjian[sesiIndex].Ujian), addedCount)
-}
 func (ut *UjianTracker) checkAndCleanExpiredSessionsBeforeIntegration(tingkatData *models.TingkatData, tingkat models.Tingkat, now time.Time) {
-    // Cek apakah ada sesi yang sedang aktif
     activeSesi, isActive := ut.isSesiCurrentlyActive(tingkatData.SesiUjian, now)
     
     if isActive {
@@ -608,11 +536,9 @@ func (ut *UjianTracker) checkAndCleanExpiredSessionsBeforeIntegration(tingkatDat
         return
     }
     
-    // Logika cleaning yang existing (hanya jalan jika tidak ada sesi aktif)
     var nextSesiTime *time.Time
     var isLastSesi bool = true
     
-    // Cari sesi berikutnya
     for _, sesi := range tingkatData.SesiUjian {
         if sesi.JamMulai != "" {
             sesiMulai, err := parseTime(sesi.JamMulai)
@@ -625,7 +551,6 @@ func (ut *UjianTracker) checkAndCleanExpiredSessionsBeforeIntegration(tingkatDat
         }
     }
     
-    // Cari sesi terakhir yang sudah selesai
     var lastFinishedSesiTime *time.Time
     for _, sesi := range tingkatData.SesiUjian {
         if sesi.JamSelesai != "" {
@@ -642,14 +567,12 @@ func (ut *UjianTracker) checkAndCleanExpiredSessionsBeforeIntegration(tingkatDat
     reason := ""
     
     if nextSesiTime != nil {
-        // Ada sesi berikutnya
         minutesToNext := int(math.Ceil(nextSesiTime.Sub(now).Minutes()))
         if minutesToNext <= 5 {
             shouldClean = true
             reason = fmt.Sprintf("Next sesi in %d minutes, cleaning ujian susulan", minutesToNext)
         }
     } else if lastFinishedSesiTime != nil && isLastSesi {
-        // Sesi terakhir sudah selesai
         minutesSinceEnd := int(now.Sub(*lastFinishedSesiTime).Minutes())
         if minutesSinceEnd >= 120 {
             shouldClean = true
@@ -664,11 +587,43 @@ func (ut *UjianTracker) checkAndCleanExpiredSessionsBeforeIntegration(tingkatDat
 }
 
 
+func (ut *UjianTracker) cleanAllUjianSusulanByTingkat(tingkat models.Tingkat, reason string) {
+    ut.mutex.Lock()
+    defer ut.mutex.Unlock()
+    
+    ujianList, exists := ut.UjianSusulan[tingkat]
+    if !exists || len(ujianList) == 0 {
+        return
+    }
+    
+    // Kumpulkan semua ujian IDs sebelum dihapus
+    var ujianIDsToReactivate []string
+    for _, ujian := range ujianList {
+        ujianIDsToReactivate = append(ujianIDsToReactivate, ujian.UjianData.ID)
+    }
+    
+    cleanedCount := len(ujianList)
+    delete(ut.UjianSusulan, tingkat)
+    
+    log.Printf("DEBUG: Cleaned ALL %d ujian susulan for tingkat %s - Reason: %s",
+        cleanedCount, tingkat, reason)
+    
+    // Update status ujian ke 'active' setelah dibersihkan
+    if len(ujianIDsToReactivate) > 0 {
+        if err := updateUjianStatusList(ut.DB, ujianIDsToReactivate); err != nil {
+            log.Printf("ERROR: Gagal update status ujian setelah clean by tingkat %s: %v", tingkat, err)
+        } else {
+            log.Printf("DEBUG: Successfully reactivated %d ujian after cleaning tingkat %s", 
+                len(ujianIDsToReactivate), tingkat)
+        }
+    }
+}
 func (ut *UjianTracker) cleanExpiredUjianSusulan() {
     ut.mutex.Lock()
     defer ut.mutex.Unlock()
     now := time.Now()
     cleanedCount := 0
+    var ujianIDsToReactivate []string
 
     for tingkat, ujianList := range ut.UjianSusulan {
         var activeUjian []models.UjianSusulanData
@@ -680,6 +635,7 @@ func (ut *UjianTracker) cleanExpiredUjianSusulan() {
                 log.Printf("DEBUG: Cleaning expired ujian susulan: %s (expired at %s)",
                     ujian.UjianData.ID, waktuExpired.Format("15:04:05"))
                 cleanedCount++
+                ujianIDsToReactivate = append(ujianIDsToReactivate, ujian.UjianData.ID)
             }
         }
         
@@ -689,274 +645,49 @@ func (ut *UjianTracker) cleanExpiredUjianSusulan() {
             ut.UjianSusulan[tingkat] = activeUjian
         }
     }
-    
     if cleanedCount > 0 {
         log.Printf("DEBUG: Cleaned %d expired ujian susulan", cleanedCount)
-    }
-}
-
-func (ut *UjianTracker) cleanAllUjianSusulanByTingkat(tingkat models.Tingkat, reason string) {
-    ut.mutex.Lock()
-    defer ut.mutex.Unlock()
-    
-    ujianList, exists := ut.UjianSusulan[tingkat]
-    if !exists || len(ujianList) == 0 {
-        return
-    }
-    
-    cleanedCount := len(ujianList)
-    delete(ut.UjianSusulan, tingkat)
-    
-    log.Printf("DEBUG: Cleaned ALL %d ujian susulan for tingkat %s - Reason: %s", 
-        cleanedCount, tingkat, reason)
-}
-
-
-
-func (ut *UjianTracker) updateUjianSusulanStatusForSesi(ujian *models.UjianData, sesi *models.SesiData, now time.Time) {
-    if ujian.IsUjianSusulan {
-        ujianMulai := ujian.WaktuDibuat
-        ujianSelesai := ujianMulai.Add(time.Duration(ujian.WaktuPengerjaan) * time.Minute)
-        ujian.JamMulai = ujianMulai.Format("15:04")
-        ujian.JamSelesai = ujianSelesai.Format("15:04")
-        if now.After(ujianSelesai) {
-            ujian.Status = "selesai"
-            ujian.HitungMundurAktif = false
-            ujian.SisaWaktuMulai = 0
-        } else if now.After(ujianMulai) {
-            ujian.Status = "active"
-            ujian.HitungMundurAktif = false
-            ujian.SisaWaktuMulai = 0
-        } 
-        log.Printf("DEBUG: Ujian susulan %s status individual: %s (mulai: %s, selesai: %s)", 
-            ujian.ID, ujian.Status, ujianMulai.Format("15:04"), ujianSelesai.Format("15:04"))
-        return
-    }
-    sesiMulai, err1 := parseTime(sesi.JamMulai)
-    sesiSelesai, err2 := parseTime(sesi.JamSelesai)
-    
-    if err1 != nil || err2 != nil {
-        log.Printf("ERROR: Cannot parse sesi time")
-        return
-    }
-    ujian.JamMulai = sesi.JamMulai
-    ujian.JamSelesai = sesi.JamSelesai
-    
-    if now.After(sesiSelesai) {
-        ujian.Status = "selesai"
-        ujian.HitungMundurAktif = false
-        ujian.SisaWaktuMulai = 0
-    } else if now.After(sesiMulai) {
-        ujian.Status = "active"
-        ujian.HitungMundurAktif = false
-        ujian.SisaWaktuMulai = 0
-    }
-}
-
-func (ut *UjianTracker) isUjianSusulanExpired(ujian *models.UjianData, now time.Time) bool {
-    if !ujian.IsUjianSusulan {
-        return false
-    }
-    
-    ujianSelesai := ujian.WaktuDibuat.Add(time.Duration(ujian.WaktuPengerjaan) * time.Minute)
-    return now.After(ujianSelesai)
-}
-
-func (ut *UjianTracker) createSesiForUjianSusulan(tingkatData *models.TingkatData, ujianHariIni []models.UjianSusulanData, now time.Time) {
-    if len(ujianHariIni) == 0 {
-        log.Printf("DEBUG: No ujian to process")
-        return
-    }
-
-    var waktuPengerjaanTerlama int = 0
-    var ujianTerlama *models.UjianSusulanData
-    
-    for i := range ujianHariIni {
-        if ujianHariIni[i].UjianData.WaktuPengerjaan > waktuPengerjaanTerlama {
-            waktuPengerjaanTerlama = ujianHariIni[i].UjianData.WaktuPengerjaan
-            ujianTerlama = &ujianHariIni[i]
+        if err := updateUjianStatusList(ut.DB, ujianIDsToReactivate); err != nil {
+            log.Printf("ERROR: Gagal update status ujian: %v", err)
         }
     }
-    
-    waktuMulaiUjianTerlama := ujianTerlama.WaktuDibuat
-    waktuBerakhirUjianTerlama := waktuMulaiUjianTerlama.Add(time.Duration(waktuPengerjaanTerlama) * time.Minute)
-    
-    if now.After(waktuBerakhirUjianTerlama) {
-        log.Printf("DEBUG: Ujian susulan sudah berakhir berdasarkan waktu pengerjaan, tidak membuat sesi baru")
-        return
-    }
-    
-    sesiId := fmt.Sprintf("susulan_gabungan_%s_%d_%d", ujianTerlama.Tingkat, waktuMulaiUjianTerlama.Unix(), waktuPengerjaanTerlama)
-    
-    waktuMulaiSesi := ujianTerlama.WaktuDibuat
-    waktuBerakhirSesi := waktuMulaiSesi.Add(time.Duration(waktuPengerjaanTerlama) * time.Minute)
-    
-    newSesi := models.SesiData{
-        ID:                    sesiId,
-        IsSesi:                1,
-        JamMulai:              waktuMulaiSesi.Format("15:04"),
-        JamSelesai:            waktuBerakhirSesi.Format("15:04"),
-        HitungMundurSesiAktif: false,
-        SisaWaktuSesi:         0,
-        SisaWaktuResetUjian:   0,
-        AdaSesiBerikutnya:     false,
-        IsNextSesi:            0,
-        TampilkanUjian:        false,
-        Ujian:                 []models.UjianData{}, 
-    }
-    
-    log.Printf("DEBUG: Created combined sesi %s with duration %d minutes", sesiId, waktuPengerjaanTerlama)
-    
-    var ujianList []models.UjianData
-    
-    for i, ujianSusulan := range ujianHariIni {
-        ujianData := ujianSusulan.UjianData
-        
-        ujianData.IsUjianSusulan = true
-        ujianData.UjianBerikutnyaAda = (i < len(ujianHariIni)-1)
-        ujianData.JamMulai = waktuMulaiSesi.Format("15:04")
-        ujianData.JamSelesai = waktuBerakhirSesi.Format("15:04")
-        ujianData.WaktuPengerjaan = waktuPengerjaanTerlama
-        
-        // Update status berdasarkan waktu sekarang
-        if now.After(waktuBerakhirSesi) {
-            ujianData.Status = "selesai"
-            ujianData.HitungMundurAktif = false
-            ujianData.SisaWaktuMulai = 0
-        } else if now.After(waktuMulaiSesi) {
-            ujianData.Status = "active"
-            ujianData.HitungMundurAktif = false
-            ujianData.SisaWaktuMulai = 0
-        } else {
-            ujianData.Status = "pending"
-            sisaWaktu := int(math.Ceil(waktuMulaiSesi.Sub(now).Minutes()))
-            ujianData.SisaWaktuMulai = sisaWaktu
-            ujianData.HitungMundurAktif = sisaWaktu <= 30
-        }
-        
-        ujianList = append(ujianList, ujianData)
-        log.Printf("DEBUG: Added ujian %s to combined sesi (status: %s)", ujianData.ID, ujianData.Status)
-    }
-
-    newSesi.Ujian = ujianList
-    
-    ut.updateSesiSusulanStatusWithDuration(&newSesi, *ujianTerlama, now, waktuPengerjaanTerlama)
-    
-    if newSesi.TampilkanUjian {
-        tingkatData.SesiUjian = append(tingkatData.SesiUjian, newSesi)
-        
-        sort.Slice(tingkatData.SesiUjian, func(i, j int) bool {
-            jamI, _ := parseTime(tingkatData.SesiUjian[i].JamMulai)
-            jamJ, _ := parseTime(tingkatData.SesiUjian[j].JamSelesai)
-            return jamI.Before(jamJ)
-        })
-        
-        log.Printf("DEBUG: Added sesi ujian susulan to tingkatData")
-    } else {
-        log.Printf("DEBUG: Sesi ujian susulan not added - already expired")
-    }
 }
 
-func (ut *UjianTracker) updateSesiSusulanStatusWithDuration(sesi *models.SesiData, ujianSusulan models.UjianSusulanData, now time.Time, durationMinutes int) {
-    sesiMulai := ujianSusulan.WaktuDibuat
-    sesiSelesai := sesiMulai.Add(time.Duration(durationMinutes) * time.Minute)
-    
-    log.Printf("DEBUG: updateSesiSusulanStatusWithDuration - Mulai: %s, Selesai: %s", 
-        sesiMulai.Format("15:04:05"), sesiSelesai.Format("15:04:05"))
-    
-    if now.After(sesiSelesai) {
-        sesi.TampilkanUjian = false
-        sesi.HitungMundurSesiAktif = false
-        sesi.SisaWaktuSesi = 0
-        sesi.SisaWaktuResetUjian = 0
-        log.Printf("DEBUG: Sesi ujian susulan sudah berakhir - langsung hilang")
-        
-    } else if now.After(sesiMulai) {
-        sesi.TampilkanUjian = true
-        sesi.HitungMundurSesiAktif = false
-        sesi.SisaWaktuSesi = 0
-        sisaWaktuPengerjaan := int(math.Ceil(sesiSelesai.Sub(now).Minutes()))
-        sesi.SisaWaktuResetUjian = sisaWaktuPengerjaan
-        log.Printf("DEBUG: Sesi ujian susulan sedang berlangsung, selesai dalam %d menit", sisaWaktuPengerjaan)
-        
-    } else {
-        sesi.TampilkanUjian = true
-        sisaWaktu := int(math.Ceil(sesiMulai.Sub(now).Minutes()))
-        
-        if sisaWaktu <= 30 {
-            sesi.HitungMundurSesiAktif = true
-            sesi.SisaWaktuSesi = sisaWaktu
-        } else {
-            sesi.HitungMundurSesiAktif = false
-            sesi.SisaWaktuSesi = 0
-        }
-        sesi.SisaWaktuResetUjian = 0
-        log.Printf("DEBUG: Sesi ujian susulan belum dimulai, mulai dalam %d menit", sisaWaktu)
+func updateUjianStatusList(db *sql.DB, ujianIDs []string) error {
+    tx, err := db.Begin()
+    if err != nil {
+        return fmt.Errorf("gagal mulai transaksi: %w", err)
     }
+
+    for _, id := range ujianIDs {
+        if err := updateUjianStatusInTx(tx, id); err != nil {
+            tx.Rollback()
+            return fmt.Errorf("gagal update status ujian ID %s: %w", id, err)
+        }
+    }
+
+    return tx.Commit()
 }
 
-// func (ut *UjianTracker) AddUjianSusulan(tingkat models.Tingkat, ujianData *models.UjianData, sesiId string) error {
-//     ut.mutex.Lock()
-//     defer ut.mutex.Unlock()
-//     now := time.Now()
-//     if sesiId == "" {
-//         sesiId = fmt.Sprintf("susulan_%s_%d_%s", tingkat, now.Unix(), ujianData.ID)
-//     }
-//     if ut.UjianSusulan != nil {
-//         if existingList, exists := ut.UjianSusulan[tingkat]; exists {
-//             for _, existing := range existingList {
-//                 if existing.UjianData.ID == ujianData.ID {
-//                     log.Printf("WARNING: Ujian susulan dengan ID %s sudah ada, skip adding", ujianData.ID)
-//                     return fmt.Errorf("ujian susulan dengan ID %s sudah ada", ujianData.ID)
-//                 }
-//             }
-//         }
-//     }
+func updateUjianStatusInTx(tx *sql.Tx, ujianId string) error {
+    query := "UPDATE ujian SET status = 'selesai' WHERE id = $1"
+    result, err := tx.Exec(query, ujianId)
+    if err != nil {
+        return fmt.Errorf("gagal memperbarui status ujian: %w", err)
+    }
     
-//     waktuPengerjaan := time.Duration(ujianData.WaktuPengerjaan) * time.Minute
-//     ujianData.IsUjianSusulan = true
-//     ujianData.Status = "active"
-//     ujianData.HitungMundurAktif = false
-//     ujianData.SisaWaktuMulai = 0
-//     ujianData.UjianBerikutnyaAda = false
-//     ujianData.JamMulai = now.Format("15:04")
-//     ujianData.JamSelesai = now.Add(waktuPengerjaan).Format("15:04")
-//     ujianData.WaktuDibuat = now
-//     ujianData.WaktuBerakhir = now.Add(waktuPengerjaan)
-
-//     sesiData := models.SesiData{
-//         ID:                    sesiId,
-//         IsSesi:                1,
-//         JamMulai:              now.Format("15:04"),
-//         JamSelesai:            now.Add(waktuPengerjaan).Format("15:04"),
-//         HitungMundurSesiAktif: false,
-//         SisaWaktuSesi:         0,
-//         SisaWaktuResetUjian:   ujianData.WaktuPengerjaan,
-//         AdaSesiBerikutnya:     false,
-//         IsNextSesi:            0,
-//         TampilkanUjian:        true,
-//         Ujian:                 []models.UjianData{},
-//     }
-
-//     ujianSusulan := models.UjianSusulanData{
-//         Tingkat:       tingkat,
-//         UjianData:     *ujianData,
-//         SesiData:      sesiData,
-//         WaktuDibuat:   now,
-//         WaktuBerakhir: now.Add(waktuPengerjaan),
-//     }
-
-//     if ut.UjianSusulan == nil {
-//         ut.UjianSusulan = make(map[models.Tingkat][]models.UjianSusulanData)
-//     }
-
-//     ut.UjianSusulan[tingkat] = append(ut.UjianSusulan[tingkat], ujianSusulan)
-
-//     log.Printf("Ujian susulan ditambahkan untuk tingkat %s, ujian ID: %s, status: %s, waktu pengerjaan: %d menit", 
-//         tingkat, ujianData.ID, ujianData.Status, ujianData.WaktuPengerjaan)
+    rowsAffected, _ := result.RowsAffected()
+    log.Printf("DEBUG: Updated %d rows for ujian ID: %s in transaction", rowsAffected, ujianId)
     
-//     return nil
-// }
+    if rowsAffected == 0 {
+        return fmt.Errorf("no rows affected - ujian ID might not exist: %s", ujianId)
+    }
+    
+    return nil
+}
+
+
+
 
 func (ut *UjianTracker) AddUjianSusulan(tingkat models.Tingkat, ujianData models.UjianData, durasiMenit int, sesiID string) error {
     ut.mutex.Lock()
@@ -1002,7 +733,6 @@ func (ut *UjianTracker) AddUjianSusulan(tingkat models.Tingkat, ujianData models
     
     return nil
 }
-
 
 func (ut *UjianTracker) updateUjianStatusInSesi(sesi *models.SesiData, now time.Time) {
     var validUjian []models.UjianData
@@ -1067,9 +797,6 @@ func (ut *UjianTracker) updateUjianStatusInSesi(sesi *models.SesiData, now time.
 
 	sesi.Ujian = validUjian
 }
-
-
-
 
 
 func (ut *UjianTracker) updateFinishedSesiUjianStatus(sesi *models.SesiData, now time.Time) {

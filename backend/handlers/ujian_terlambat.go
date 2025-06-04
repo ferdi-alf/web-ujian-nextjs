@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"backend/models"
 	"backend/repositories"
@@ -29,18 +30,10 @@ type UjianSusulanResponse struct {
     Data    map[string]interface{} `json:"data,omitempty"`
 }
 
-func GetUjianTerlewat(db *sql.DB) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		ujianTerlewat, err := repositories.GetUjianTerlewat(db)
-		if err != nil {
-			log.Printf("Error getting ujian terlewat: %v", err)
-			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Gagal mengambil data ujian terlewat",
-			})
-		}
-
-		return c.JSON(ujianTerlewat)
-	}
+type ActiveSessionInfo struct {
+    MataPelajaran string
+    JamMulai      string
+    SisaMenit     int
 }
 
 func AddUjianSusulan(db *sql.DB, ujianTracker *services.UjianTracker) fiber.Handler {
@@ -58,6 +51,17 @@ func AddUjianSusulan(db *sql.DB, ujianTracker *services.UjianTracker) fiber.Hand
                 "success": false,
                 "message": "No ujian IDs provided",
             })
+        }
+        
+        // Validasi sesi aktif terlebih dahulu
+        for _, item := range request.UjianIds {
+            if sessionInfo, hasActiveSoon := checkActiveSessionSoon(db, item.Tingkat); hasActiveSoon {
+                return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+                    "success": false,
+                    "message": fmt.Sprintf("Tidak dapat menambahkan ujian susulan untuk tingkat %s mata pelajaran %s karena sesi akan aktif dalam %d menit lagi (jam %s). Tunggu hingga sesi aktif terlebih dahulu.", 
+                        item.Tingkat, sessionInfo.MataPelajaran, sessionInfo.SisaMenit, sessionInfo.JamMulai),
+                })
+            }
         }
         
         var processedUjian []string
@@ -115,6 +119,84 @@ func AddUjianSusulan(db *sql.DB, ujianTracker *services.UjianTracker) fiber.Hand
         
         return c.Status(status).JSON(response)
     }
+}
+
+func checkActiveSessionSoon(db *sql.DB, tingkat string) (*ActiveSessionInfo, bool) {
+    now := time.Now()
+    
+    // Query untuk mencari sesi ujian yang akan dimulai dalam 5 menit ke depan
+    query := `
+        SELECT DISTINCT u.id, u."jamMulai", mp.pelajaran
+        FROM ujian u
+        JOIN mata_pelajaran mp ON u."mataPelajaranId" = mp.id
+        JOIN sesi s ON u."sesiId" = s.id
+        WHERE mp.tingkat = $1 
+        AND u.status = 'pending'
+        AND u."jamMulai" IS NOT NULL
+        AND u."sesiId" IS NOT NULL
+    `
+    
+    rows, err := db.Query(query, tingkat)
+    if err != nil {
+        log.Printf("Error checking active sessions: %v", err)
+        return nil, false
+    }
+    defer rows.Close()
+    
+    for rows.Next() {
+        var ujianId, jamMulai, mataPelajaran string
+        err := rows.Scan(&ujianId, &jamMulai, &mataPelajaran)
+        if err != nil {
+            log.Printf("Error scanning session row: %v", err)
+            continue
+        }
+        
+        // Parse jam mulai
+        startTime, err := parseTimeString(jamMulai)
+        if err != nil {
+            log.Printf("Error parsing start time %s: %v", jamMulai, err)
+            continue
+        }
+        
+        // Hitung selisih waktu
+        timeDiff := startTime.Sub(now)
+        
+        // Jika sesi akan dimulai dalam 5 menit ke depan
+        if timeDiff > 0 && timeDiff <= 5*time.Minute {
+            sisaMenit := int(timeDiff.Minutes()) + 1 // +1 untuk pembulatan ke atas
+            return &ActiveSessionInfo{
+                MataPelajaran: mataPelajaran,
+                JamMulai:      jamMulai,
+                SisaMenit:     sisaMenit,
+            }, true
+        }
+    }
+    
+    return nil, false
+}
+
+func parseTimeString(timeStr string) (time.Time, error) {
+    now := time.Now()
+    
+    formats := []string{
+        "15:04:05",
+        "15:04",
+        "2006-01-02 15:04:05",
+        "2006-01-02T15:04:05Z07:00",
+    }
+    
+    for _, format := range formats {
+        if t, err := time.Parse(format, timeStr); err == nil {
+            // Jika format hanya jam, gunakan tanggal hari ini
+            if format == "15:04:05" || format == "15:04" {
+                return time.Date(now.Year(), now.Month(), now.Day(), 
+                    t.Hour(), t.Minute(), t.Second(), 0, now.Location()), nil
+            }
+            return t, nil
+        }
+    }
+    
+    return time.Time{}, fmt.Errorf("unable to parse time string: %s", timeStr)
 }
 
 func processUjianSusulanInTx(tx *sql.Tx, ujianTracker *services.UjianTracker, item UjianSusulanItem) error {
@@ -206,4 +288,16 @@ func getUjianDetailInTx(tx *sql.Tx, ujianId string) (*models.UjianData, error) {
     return &ujianData, nil
 }
 
+func GetUjianTerlewat(db *sql.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ujianTerlewat, err := repositories.GetUjianTerlewat(db)
+		if err != nil {
+			log.Printf("Error getting ujian terlewat: %v", err)
+			return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Gagal mengambil data ujian terlewat",
+			})
+		}
 
+		return c.JSON(ujianTerlewat)
+	}
+}

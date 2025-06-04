@@ -148,8 +148,8 @@ model Jadwal {
 
 model Sesi {
   id             String    @id @default(cuid())
-  sesi           Int       // misal 1, 2, dst
-  jamMulai   String?   // ← jadikan nullable
+  sesi           Int       
+  jamMulai   String?  
   jamSelesai String?
   jadwalId       String
   jadwal         Jadwal    @relation(fields: [jadwalId], references: [id], onDelete: Cascade)
@@ -167,7 +167,7 @@ model Ujian {
   jamMulai  String?
   jamSelesai String?
   status          Status        @default(pending)
-  sesiId          String?        // optional
+  sesiId          String?       
   sesi            Sesi?          @relation("SesiUjian", fields: [sesiId], references: [id], onDelete: SetNull)
   hasil           Hasil[]
   kecurangan      Kecurangan[]
@@ -176,6 +176,7 @@ model Ujian {
 
   @@map("ujian")
 }
+
 model MataPelajaran {
   id        String  @id @default(cuid())
   tingkat   Tingkat

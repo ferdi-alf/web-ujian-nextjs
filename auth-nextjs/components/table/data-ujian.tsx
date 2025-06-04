@@ -1,13 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
-import React, {
-  startTransition,
-  useActionState,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useState } from "react";
 import {
   Paper,
   Table,
@@ -18,7 +12,6 @@ import {
   TableRow,
   Toolbar,
   IconButton,
-  Collapse,
   Box,
   Typography,
   Alert,
@@ -308,10 +301,12 @@ function Row({
           </IconButton>
         </TableCell>
         <TableCell className="">
-          {row.mataPelajaran}{" "}
-          {row.isUjianSusulan && (
-            <span className="text-yellow-500 font-light">ujian susulan</span>
-          )}
+          <span className="flex flex-col ">
+            {row.mataPelajaran}{" "}
+            {row.isUjianSusulan && (
+              <span className="text-yellow-500 font-light">ujian susulan</span>
+            )}
+          </span>
         </TableCell>
         <TableCell align="center">{token || "-"}</TableCell>
         <TableCell align="center">
@@ -325,7 +320,9 @@ function Row({
           </div>
           {row.hitungMundurAktif && row.sisaWaktuMulai != null && (
             <div className="text-xs truncate text-blue-600 mt-1">
-              {row.sisaWaktuMulai} menit lagi terjadwal active
+              {!row.isUjianSusulan && row.sisaWaktuMulai && (
+                <span>{row.sisaWaktuMulai} menit lagi terjadwal active</span>
+              )}
             </div>
           )}
         </TableCell>
